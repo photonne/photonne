@@ -46,8 +46,8 @@ public static class SummaryOrientation
             if (MediaFileTypes.IsHeic(extension) || MediaFileTypes.IsRaw(extension))
             {
                 var info = new MagickImageInfo(path);
-                var turned = info.Orientation is OrientationType.LeftTop or OrientationType.RightTop
-                    or OrientationType.RightBottom or OrientationType.LeftBottom;
+                var turned = info.Orientation is Orientation.LeftTop or Orientation.RightTop
+                    or Orientation.RightBottom or Orientation.LeftBottom;
                 return PhotoAspectRatio((int)info.Width, (int)info.Height, turned ? 6 : 1);
             }
 

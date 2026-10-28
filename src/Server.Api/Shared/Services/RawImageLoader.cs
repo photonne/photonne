@@ -125,10 +125,10 @@ public static class RawImageLoader
             // The preview rarely says which way is up: that lives in the RAW's
             // main IFD. Callers already run AutoOrient(), so hand it over.
             if (preview.Orientation is >= 1 and <= 8
-                && image.Orientation is OrientationType.Undefined or OrientationType.TopLeft
+                && image.Orientation is Orientation.Undefined or Orientation.TopLeft
                 && !IsAlreadyRotated(preview, image))
             {
-                image.Orientation = (OrientationType)preview.Orientation;
+                image.Orientation = (Orientation)preview.Orientation;
             }
             return image;
         }
