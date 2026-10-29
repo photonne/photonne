@@ -41,9 +41,10 @@ public class MapPointsEndpoint : IEndpoint
         {
             var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
                 dbContext, userId, userRootPath, cancellationToken);
-            var assets = await dbContext.Assets
-                .Include(a => a.Exif)
-                .Include(a => a.Thumbnails)
+            // Projected in SQL: loading each geotagged asset with its EXIF and
+            // every thumbnail to read five fields was slow on large libraries.
+            points = await dbContext.Assets
+                .AsNoTracking()
                 .Where(a => a.DeletedAt == null &&
                            !a.IsFileMissing &&
                            a.Exif != null &&
@@ -53,15 +54,15 @@ public class MapPointsEndpoint : IEndpoint
                            (a.Exif.Latitude.Value > 0.0001 || a.Exif.Latitude.Value < -0.0001 ||
                             a.Exif.Longitude.Value > 0.0001 || a.Exif.Longitude.Value < -0.0001) &&
                            a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value))
+                .Select(a => new MapPointResponse
+                {
+                    Id = a.Id,
+                    Latitude = a.Exif!.Latitude!.Value,
+                    Longitude = a.Exif.Longitude!.Value,
+                    HasThumbnail = a.Thumbnails.Any(),
+                    Date = a.CapturedAt
+                })
                 .ToListAsync(cancellationToken);
-            points = assets.Select(a => new MapPointResponse
-            {
-                Id = a.Id,
-                Latitude = a.Exif!.Latitude!.Value,
-                Longitude = a.Exif.Longitude!.Value,
-                HasThumbnail = a.Thumbnails.Any(),
-                Date = a.CapturedAt
-            }).ToList();
 
             cache.Set(cacheKey, points, TimeSpan.FromMinutes(5));
         }
