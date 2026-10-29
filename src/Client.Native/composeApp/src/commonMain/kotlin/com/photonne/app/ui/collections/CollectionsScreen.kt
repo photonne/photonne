@@ -230,10 +230,11 @@ fun CollectionsScreen(
     LaunchedEffect(scrollToTopTick) {
         if (scrollToTopTick > 0) listState.animateScrollToItem(0)
     }
-    // Las secciones llegan a destiempo (recuerdos, personas, favoritos…) y el
-    // orden adaptativo cambia con los recuentos: el LazyColumn se ancla al
-    // primer elemento que vio y, si luego entra algo encima, la página aparece
-    // a media altura. Hasta que el usuario arrastre, se mantiene arriba.
+    // El host espera a todas las fuentes antes de quitar el esqueleto, pero
+    // una que llegue tarde (pasado su tope) o el orden adaptativo puede meter
+    // una sección encima de lo visible: el LazyColumn se ancla al elemento que
+    // vio y la página quedaría a media altura. Hasta que el usuario arrastre,
+    // se mantiene arriba.
     var userScrolled by remember { mutableStateOf(false) }
     LaunchedEffect(listState) {
         listState.interactionSource.interactions.collect {

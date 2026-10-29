@@ -2024,6 +2024,9 @@ internal fun AuthenticatedContentHost.openPinned(entry: com.photonne.app.ui.coll
     }
 }
 
+/** Lo más que espera Colecciones a todas sus fuentes antes de enseñar lo que tenga. */
+private const val COLLECTIONS_REVEAL_TIMEOUT_MS = 5_000L
+
 /**
  * Página Colecciones del pager: junta lo que ya cargan los ViewModels de
  * álbumes, carpetas, recuerdos, personas y escenas/objetos.
@@ -2033,6 +2036,27 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
     with(host) {
         val feed by memoryFeedViewModel.state.collectAsStateWithLifecycle()
         val mapState by mapViewModel.state.collectAsStateWithLifecycle()
+        val collectionsActive = appState.selectedTab.navTab() == MainTab.Collections
+        // La primera vez Colecciones sale entera o no sale: esqueleto hasta
+        // que cada fuente ha respondido (bien o con error), en vez de pintar
+        // las secciones según llegan y que la página vaya creciendo y
+        // reordenándose. Una fuente lenta no la retiene más del tope.
+        var collectionsRevealed by androidx.compose.runtime.saveable.rememberSaveable {
+            mutableStateOf(false)
+        }
+        val collectionsSettled = !albumsState.isLoading && !foldersState.isLoading &&
+            feed.attempted && !feed.isLoading &&
+            (peopleState.loaded || peopleState.error != null) &&
+            (favoritesState.loaded || favoritesState.error != null)
+        LaunchedEffect(collectionsSettled) {
+            if (collectionsSettled) collectionsRevealed = true
+        }
+        LaunchedEffect(collectionsActive) {
+            if (collectionsActive && !collectionsRevealed) {
+                kotlinx.coroutines.delay(COLLECTIONS_REVEAL_TIMEOUT_MS)
+                collectionsRevealed = true
+            }
+        }
         val content = com.photonne.app.ui.collections.CollectionsContent(
             // Recuerdos: solo hoy y este mes; los temas van a Explorar.
             memories = remember(feed.rows) { feed.recuerdos },
@@ -2068,9 +2092,7 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
                 )
             },
             isRefreshing = feed.isLoading && feed.rows.isNotEmpty(),
-            isInitialLoading = albumsState.isLoading && albumsState.albums.isEmpty() &&
-                foldersState.isLoading && foldersState.personalFolders.isEmpty() &&
-                foldersState.sharedFolders.isEmpty() && feed.rows.isEmpty(),
+            isInitialLoading = !collectionsRevealed,
         )
         val actions = remember(appState) {
             com.photonne.app.ui.collections.CollectionsActions(
@@ -2195,7 +2217,7 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
                 // hacen falta para la tarjeta.
                 mapViewModel.ensureTileApiKey()
             },
-            active = appState.selectedTab.navTab() == MainTab.Collections,
+            active = collectionsActive,
             scrollToTopTick = appState.collectionsScrollToTopTick,
             onChromeVisibleChange = { appState.collectionsChromeVisible = it },
         )
