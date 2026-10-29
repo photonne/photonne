@@ -29,6 +29,12 @@ services:
       # AVI…), one at a time, under /data/thumbnails/.playback. Off on a
       # server too weak to transcode: the originals are played as they are.
       - Video__PlaybackCopies=${VIDEO_PLAYBACK_COPIES:-true}
+      # software (libx264, CPU) or nvenc (NVIDIA GPU: see docker-compose.gpu.yml;
+      # falls back to the CPU when the card isn't there). VIDEO_THREADS caps
+      # ffmpeg's threads; 0 lets it take every core of the host, whatever
+      # the container's cpus limit says.
+      - Video__Encoder=${VIDEO_ENCODER:-software}
+      - Video__Threads=${VIDEO_THREADS:-0}
       # Sign-in with an OpenID Connect provider (Authentik, Keycloak,
       # Authelia…). Redirect URI to register: <public URL>/api/auth/oidc/callback
       - Oidc__Enabled=${OIDC_ENABLED:-false}
