@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.7.0](https://github.com/photonne/photonne/compare/native-v2.6.0...native-v2.7.0) (2026-10-29)
+
+
+### Novedades
+
+* **native:** interruptores de recuerdos, ubicaciones, lugares, viajes y resumen del año en las tareas nocturnas ([0615888](https://github.com/photonne/photonne/commit/06158889a40115a70b2e92ce080bd993395eb130))
+
+
+### Correcciones
+
+* **native:** abrir Colecciones siempre arriba aunque las secciones lleguen a destiempo ([96cad50](https://github.com/photonne/photonne/commit/96cad5069485ca76a4d18e205dcabf6051bb7e7f))
+* **native:** Colecciones espera a todas sus secciones tras el esqueleto antes de pintarse ([8d62f18](https://github.com/photonne/photonne/commit/8d62f18f22b2bd25d7a09897b444dad9e9b8356b))
+* **native:** margen de timeout al cargar duplicados en bibliotecas grandes ([71e4e4e](https://github.com/photonne/photonne/commit/71e4e4e34e2caedc3a0f609bf5a762aded1505bc))
+* **native:** recargar los recuerdos si se cargaron otro día al entrar o volver a primer plano ([12167f3](https://github.com/photonne/photonne/commit/12167f3fa05afe32c69eb6aec813da84dba3e350))
+
 ## [2.6.0](https://github.com/photonne/photonne/compare/native-v2.5.1...native-v2.6.0) (2026-10-28)
 
 
