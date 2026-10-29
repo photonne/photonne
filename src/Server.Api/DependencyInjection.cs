@@ -118,6 +118,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<Features.Memories.Generation.IMemoryGenerator,
                                    Features.Memories.Generation.TripMemoryGenerator>();
         builder.Services.AddScoped<Features.Memories.Generation.MemoryGenerationService>();
+        builder.Services.AddHostedService<Features.Memories.Generation.MemoryDailyRefreshService>();
         builder.Services.AddScoped<Features.VideoSummaries.VideoSummarySources>();
         builder.Services.AddScoped<Features.VideoSummaries.VideoSummaryGenerator>();
         builder.Services.AddScoped<Features.VideoSummaries.Highlights.VideoProfileCache>();

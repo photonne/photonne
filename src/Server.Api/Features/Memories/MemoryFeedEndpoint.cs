@@ -8,6 +8,7 @@ using Photonne.Server.Api.Shared.Data;
 using Photonne.Server.Api.Shared.Dtos;
 using Photonne.Server.Api.Shared.Interfaces;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.Memories;
 
@@ -47,6 +48,7 @@ public class MemoryFeedEndpoint : IEndpoint
 
     private static async Task<Results<Ok<List<MemoryResponse>>, UnauthorizedHttpResult, BadRequest<ApiError>>> Handle(
         [FromServices] ApplicationDbContext db,
+        [FromServices] SettingsService settings,
         ClaimsPrincipal user,
         [FromQuery] string? kind,
         [FromQuery] int? limit,
@@ -62,6 +64,15 @@ public class MemoryFeedEndpoint : IEndpoint
         var query = db.Memories
             .AsNoTracking()
             .Where(m => m.OwnerId == userId && !m.IsDismissed);
+
+        // "Un día como hoy" is only true today. The rows are written by a
+        // background refresh (MemoryDailyRefreshService), so between midnight and
+        // its run — or with it switched off — yesterday's would still be here.
+        // The date is in the key (OnThisDayGenerator): keep only today's.
+        var tz = await MetadataTimeZone.ResolveAsync(settings, ct);
+        var today = MetadataTimeZone.LocalNow(tz);
+        var todaySuffix = $"-{today.Month:D2}-{today.Day:D2}";
+        query = query.Where(m => m.Kind != MemoryKind.OnThisDay || m.DedupeKey.EndsWith(todaySuffix));
 
         if (!string.IsNullOrWhiteSpace(kind))
         {
