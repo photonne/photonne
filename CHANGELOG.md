@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.11.0](https://github.com/photonne/photonne/compare/server-v2.10.1...server-v2.11.0) (2026-10-29)
+
+
+### Novedades
+
+* **server:** Copias de vídeo con NVENC y límite de hilos de ffmpeg ([6b223c5](https://github.com/photonne/photonne/commit/6b223c51c599123d7d449de2ab22efb30b04a93e))
+* **spa:** interruptores de recuerdos, ubicaciones, lugares y viajes en las tareas nocturnas ([6b0eac0](https://github.com/photonne/photonne/commit/6b0eac0bfe69e18e7321d187d76067af53e50321))
+
+
+### Correcciones
+
+* **api:** agrupar duplicados en la base de datos para no agotar el timeout del cliente ([040480b](https://github.com/photonne/photonne/commit/040480b63533768f289b6e1b337c2af7e6bff186))
+* **api:** contar y elegir las portadas de las carpetas en la base de datos ([03a0a98](https://github.com/photonne/photonne/commit/03a0a98ceef57be88a4509ccdc89282ba081c6b8))
+* **api:** proyectar en SQL los puntos del mapa en vez de cargar cada foto con su EXIF y miniaturas ([8340560](https://github.com/photonne/photonne/commit/8340560de3bbc0bacae010cc7e6682c44a387f82))
+* **api:** regenerar los recuerdos al cambiar el día y no servir «Un día como hoy» de otra fecha ([d230598](https://github.com/photonne/photonne/commit/d2305988f23cfe01a648b059c357bf5d5b8da79e))
+
 ## [2.10.1](https://github.com/photonne/photonne/compare/server-v2.10.0...server-v2.10.1) (2026-10-28)
 
 
