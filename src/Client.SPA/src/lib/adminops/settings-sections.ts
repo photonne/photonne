@@ -397,6 +397,20 @@ const nightly: SettingsSection = {
 				bool('NightlyTaskSettings.FaceClustering.Enabled', m.ops_set_nightly_clustering, true),
 				bool('NightlyTaskSettings.TrashCleanup.Enabled', m.ops_set_nightly_trash, false),
 				bool('NightlyTaskSettings.IndexingCoverage.Enabled', m.ops_set_nightly_coverage, false),
+				// Same order as the server runs them: each one reads what the one before wrote.
+				bool(
+					'NightlyTaskSettings.InterpolateLocations.Enabled',
+					m.ops_set_nightly_interpolate,
+					true
+				),
+				bool('NightlyTaskSettings.ReverseGeocode.Enabled', m.ops_set_nightly_geocode, true),
+				bool('NightlyTaskSettings.TripDetection.Enabled', m.ops_set_nightly_trips, true),
+				bool(
+					'NightlyTaskSettings.Memories.Enabled',
+					m.ops_set_nightly_memories,
+					true,
+					m.ops_set_nightly_memories_hint
+				),
 				bool('NightlyTaskSettings.YearSummaries.Enabled', m.ops_set_nightly_year_summaries, true)
 			]
 		}
