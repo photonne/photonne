@@ -2,9 +2,11 @@
 #
 #   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 #
-# It ONLY overrides the photonne-ml service — swapping in the CUDA image,
-# passing the GPU through, and asking ONNX Runtime to use CUDA (falling back to
-# CPU if the provider can't load). Everything else comes from docker-compose.yml.
+# It overrides the photonne-ml service — swapping in the CUDA image, passing
+# the GPU through, and asking ONNX Runtime to use CUDA (falling back to CPU if
+# the provider can't load) — and passes the GPU to photonne-api too, so the
+# video playback copies are encoded with NVENC instead of on the CPU.
+# Everything else comes from docker-compose.yml.
 #
 # Host prerequisites: el nvidia-container-toolkit (`nvidia-ctk runtime configure`)
 # y un driver que cumpla el NVIDIA_REQUIRE_CUDA de la base CUDA 12.8 de la imagen:
@@ -15,6 +17,21 @@
 # "unsatisfied condition: cuda>=12.8". Verifica con:
 #   docker run --rm --gpus all nvidia/cuda:12.8.1-base-ubuntu24.04 nvidia-smi
 services:
+  photonne-api:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      # video: the NVENC/NVDEC libraries; compute: CUDA, for -hwaccel cuda.
+      - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
+      # VIDEO_ENCODER=software keeps the copies on the CPU.
+      - Video__Encoder=${VIDEO_ENCODER:-nvenc}
+
   photonne-ml:
     image: ghcr.io/photonne/photonne-ml:latest-gpu
     deploy:

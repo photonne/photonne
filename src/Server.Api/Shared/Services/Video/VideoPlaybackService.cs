@@ -24,6 +24,8 @@ public sealed class VideoPlaybackService(
 
     public string PlaybackRoot { get; } = Path.Combine(configuration["ThumbnailsPath"] ?? "/data/thumbnails", ".playback");
 
+    private readonly VideoTranscodeOptions options = VideoTranscodeOptions.From(configuration, logger);
+
     /// <summary>Looks at the next video without a decision; false when there is none.</summary>
     public async Task<bool> ProcessNextAsync(CancellationToken ct)
     {
@@ -69,7 +71,16 @@ public sealed class VideoPlaybackService(
             else
             {
                 var target = Path.Combine(PlaybackRoot, $"{next.Id}.mp4");
-                if (await TranscodeAsync(source, target, hasAudio: probe.AudioCodec is not null, ct))
+                var hasAudio = probe.AudioCodec is not null;
+                var done = await TranscodeAsync(source, target, hasAudio, options, ct);
+                if (!done && options.Encoder != VideoEncoder.Software)
+                {
+                    // No GPU passed through, a driver without NVENC, a format the
+                    // card can't take: the CPU still makes the copy.
+                    logger.LogWarning("{Encoder} failed for {AssetId}; retrying with libx264", options.Encoder, next.Id);
+                    done = await TranscodeAsync(source, target, hasAudio, options with { Encoder = VideoEncoder.Software }, ct);
+                }
+                if (done)
                 {
                     row.Status = PlaybackStatus.Ready;
                     row.FilePath = target;
@@ -131,21 +142,14 @@ public sealed class VideoPlaybackService(
     }
 
     /// <summary>
-    /// H.264/AAC MP4, longest side at most 1920, moov atom first so it starts
-    /// playing (and seeking) before it has all arrived. Written to a temp name
-    /// and moved, so a half-written copy is never served.
+    /// Encodes as <see cref="VideoTranscodeOptions.Arguments"/> says. Written
+    /// to a temp name and moved, so a half-written copy is never served.
     /// </summary>
-    private async Task<bool> TranscodeAsync(string source, string target, bool hasAudio, CancellationToken ct)
+    private async Task<bool> TranscodeAsync(string source, string target, bool hasAudio, VideoTranscodeOptions encoding, CancellationToken ct)
     {
         Directory.CreateDirectory(PlaybackRoot);
         var temp = target + ".part";
-        var side = VideoPlaybackPolicy.MaxLongSide;
-        var scale = $"scale=w='min({side},iw)':h='min({side},ih)':force_original_aspect_ratio=decrease:force_divisible_by=2";
-        var audio = hasAudio ? "-c:a aac -b:a 128k" : "-an";
-        var arguments =
-            $"-i \"{source}\" -map 0:v:0 {(hasAudio ? "-map 0:a:0" : "")} -vf \"{scale}\" " +
-            $"-c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -profile:v high {audio} " +
-            $"-movflags +faststart -f mp4 \"{temp}\"";
+        var arguments = encoding.Arguments(source, temp, hasAudio);
 
         var ffmpegExe = OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg";
         var ffmpegPath = string.IsNullOrEmpty(FFmpeg.ExecutablesPath) ? ffmpegExe : Path.Combine(FFmpeg.ExecutablesPath, ffmpegExe);
@@ -192,7 +196,8 @@ public sealed class VideoPlaybackService(
 /// Works through <see cref="VideoPlaybackService"/> in the background: video
 /// after video until none is left, then a look every few minutes for new
 /// ones and stale copies. Off with <c>Video:PlaybackCopies=false</c> (env
-/// <c>Video__PlaybackCopies=false</c>) on a server too weak to transcode.
+/// <c>Video__PlaybackCopies=false</c>) on a server too weak to transcode;
+/// <see cref="VideoTranscodeOptions"/> caps the threads or moves it to the GPU.
 /// </summary>
 public sealed class VideoPlaybackWorker(
     IServiceScopeFactory scopeFactory,
@@ -209,6 +214,9 @@ public sealed class VideoPlaybackWorker(
             logger.LogInformation("Video playback copies are off (Video:PlaybackCopies=false)");
             return;
         }
+        var encoding = VideoTranscodeOptions.From(configuration, logger);
+        logger.LogInformation("Video playback copies: encoder {Encoder}, threads {Threads}",
+            encoding.Encoder, encoding.Threads > 0 ? encoding.Threads.ToString() : "auto");
 
         try
         {

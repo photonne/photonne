@@ -182,6 +182,8 @@ El servidor de desarrollo de Vite hace de proxy de `/api`, así que el navegador
 | `THUMBNAILS_HOST_PATH` | Ruta absoluta del host montada como volumen de miniaturas | `./photonne/data/thumbnails` |
 | `CONFIG_HOST_PATH` | Ruta del host montada en `/data/config` (clave JWT generada) | `./data/config` |
 | `VIDEO_PLAYBACK_COPIES` | Genera copias H.264 (hasta 1080p) de los vídeos que no se reproducen en todas partes (HEVC, 4K, AVI, MKV…), de una en una, en `/data/thumbnails/.playback`. `false` en un servidor sin potencia para transcodificar | `true` |
+| `VIDEO_ENCODER` | Quién codifica las copias de vídeo: `software` (libx264, CPU) o `nvenc` (GPU NVIDIA; `docker-compose.gpu.yml` ya lo activa y pasa la GPU al servidor). Si la GPU falla en un vídeo, se hace en la CPU | `software` |
+| `VIDEO_THREADS` | Hilos de ffmpeg para las copias de vídeo. `0` usa todos los núcleos del host, aunque el contenedor tenga un límite de `cpus` menor | `0` |
 | `OIDC_ENABLED` | Inicio de sesión con un proveedor OpenID Connect (Authentik, Keycloak, Authelia…). URI de redirección a registrar: `<OIDC_PUBLIC_URL>/api/auth/oidc/callback` | `false` |
 | `OIDC_AUTHORITY` / `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET` | Emisor del proveedor y credenciales del cliente | *(vacío)* |
 | `OIDC_DISPLAY_NAME` | Texto del botón: «Entrar con …» | `SSO` |
