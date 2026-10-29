@@ -1197,6 +1197,12 @@
     <string name="admin_settings_nightly_clustering">Re-cluster faces after model runs</string>
     <string name="admin_settings_nightly_trash_cleanup">Empty expired trash (retention &amp; quota)</string>
     <string name="admin_settings_nightly_indexing_coverage">Verify indexing coverage</string>
+    <string name="admin_settings_nightly_interpolate">Infer the location of photos without GPS from nearby ones</string>
+    <string name="admin_settings_nightly_geocode">Name the places in photos</string>
+    <string name="admin_settings_nightly_trips">Detect trips</string>
+    <string name="admin_settings_nightly_memories">Generate memories</string>
+    <string name="admin_settings_nightly_memories_hint">They are also refreshed when the day changes, even with nightly tasks off.</string>
+    <string name="admin_settings_nightly_year_summaries">Year summary video at the end of December (for those who turn it on)</string>
     <string name="admin_settings_nightly_mode">Processing mode</string>
 
     <string name="admin_settings_notifications">Notifications</string>

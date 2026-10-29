@@ -25,6 +25,12 @@ import com.photonne.app.resources.admin_settings_nightly_thumbnails
 import com.photonne.app.resources.admin_settings_nightly_timezone
 import com.photonne.app.resources.admin_settings_nightly_indexing_coverage
 import com.photonne.app.resources.admin_settings_nightly_trash_cleanup
+import com.photonne.app.resources.admin_settings_nightly_interpolate
+import com.photonne.app.resources.admin_settings_nightly_geocode
+import com.photonne.app.resources.admin_settings_nightly_trips
+import com.photonne.app.resources.admin_settings_nightly_memories
+import com.photonne.app.resources.admin_settings_nightly_memories_hint
+import com.photonne.app.resources.admin_settings_nightly_year_summaries
 import org.jetbrains.compose.resources.stringResource
 
 class AdminNightlySettingsViewModel(
@@ -53,6 +59,11 @@ class AdminNightlySettingsViewModel(
         "NightlyTaskSettings.FaceClustering.Enabled",
         "NightlyTaskSettings.TrashCleanup.Enabled",
         "NightlyTaskSettings.IndexingCoverage.Enabled",
+        "NightlyTaskSettings.InterpolateLocations.Enabled",
+        "NightlyTaskSettings.ReverseGeocode.Enabled",
+        "NightlyTaskSettings.TripDetection.Enabled",
+        "NightlyTaskSettings.Memories.Enabled",
+        "NightlyTaskSettings.YearSummaries.Enabled",
     )
 
     override val defaults = buildMap {
@@ -69,6 +80,9 @@ class AdminNightlySettingsViewModel(
         put("NightlyTaskSettings.FaceClustering.Enabled", "true")
         put("NightlyTaskSettings.TrashCleanup.Enabled", "false")
         put("NightlyTaskSettings.IndexingCoverage.Enabled", "false")
+        // On unless turned off, as the server reads them.
+        listOf("InterpolateLocations", "ReverseGeocode", "TripDetection", "Memories", "YearSummaries")
+            .forEach { put("NightlyTaskSettings.$it.Enabled", "true") }
     }
 }
 
@@ -139,6 +153,38 @@ fun AdminNightlySettingsScreen(
             checked = state.bool("NightlyTaskSettings.IndexingCoverage.Enabled")
         ) {
             viewModel.setBool("NightlyTaskSettings.IndexingCoverage.Enabled", it)
+        }
+        // Same order as the server runs them: each one reads what the one before wrote.
+        SettingSwitch(
+            label = stringResource(Res.string.admin_settings_nightly_interpolate),
+            checked = state.bool("NightlyTaskSettings.InterpolateLocations.Enabled")
+        ) {
+            viewModel.setBool("NightlyTaskSettings.InterpolateLocations.Enabled", it)
+        }
+        SettingSwitch(
+            label = stringResource(Res.string.admin_settings_nightly_geocode),
+            checked = state.bool("NightlyTaskSettings.ReverseGeocode.Enabled")
+        ) {
+            viewModel.setBool("NightlyTaskSettings.ReverseGeocode.Enabled", it)
+        }
+        SettingSwitch(
+            label = stringResource(Res.string.admin_settings_nightly_trips),
+            checked = state.bool("NightlyTaskSettings.TripDetection.Enabled")
+        ) {
+            viewModel.setBool("NightlyTaskSettings.TripDetection.Enabled", it)
+        }
+        SettingSwitch(
+            label = stringResource(Res.string.admin_settings_nightly_memories),
+            description = stringResource(Res.string.admin_settings_nightly_memories_hint),
+            checked = state.bool("NightlyTaskSettings.Memories.Enabled")
+        ) {
+            viewModel.setBool("NightlyTaskSettings.Memories.Enabled", it)
+        }
+        SettingSwitch(
+            label = stringResource(Res.string.admin_settings_nightly_year_summaries),
+            checked = state.bool("NightlyTaskSettings.YearSummaries.Enabled")
+        ) {
+            viewModel.setBool("NightlyTaskSettings.YearSummaries.Enabled", it)
         }
     }
 }
