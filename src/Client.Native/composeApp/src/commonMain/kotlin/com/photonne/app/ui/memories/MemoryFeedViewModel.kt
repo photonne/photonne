@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 /**
  * Reading order for the feed's rows. No longer titles anything — the row's header
@@ -74,6 +77,8 @@ data class MemoryFeedUiState(
     val attempted: Boolean = false,
     /** Id of the memory whose assets are being fetched for the viewer. */
     val openingId: String? = null,
+    /** Día (del dispositivo) en que se cargó: "hoy hace…" deja de valer al cambiar. */
+    val loadedOn: LocalDate? = null,
 ) {
     /** Recuerdos: lo que tiene fecha, "hoy hace…" y "este mes". */
     val recuerdos: List<Memory> get() = recuerdosOf(rows)
@@ -139,6 +144,21 @@ class MemoryFeedViewModel(
     private val _state = MutableStateFlow(MemoryFeedUiState())
     val state: StateFlow<MemoryFeedUiState> = _state.asStateFlow()
 
+    /**
+     * Carga el feed si no se ha cargado, o se cargó otro día: con la app abierta
+     * pasada la medianoche, "Un día como hoy" seguiría enseñando el de ayer.
+     */
+    fun ensureFresh() {
+        val snapshot = _state.value
+        if (snapshot.isLoading) return
+        val stale = snapshot.loadedOn != null && snapshot.loadedOn != today()
+        val neverLoaded = snapshot.rows.isEmpty() && !(snapshot.attempted && snapshot.error == null)
+        if (stale || neverLoaded) refresh()
+    }
+
+    private fun today(): LocalDate =
+        kotlin.time.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+
     fun refresh() {
         _state.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
@@ -147,6 +167,7 @@ class MemoryFeedViewModel(
                     _state.value = MemoryFeedUiState(
                         rows = groupIntoRows(memories),
                         attempted = true,
+                        loadedOn = today(),
                     )
                 }
                 .onFailure { error ->
