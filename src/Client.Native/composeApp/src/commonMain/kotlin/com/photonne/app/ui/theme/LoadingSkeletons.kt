@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -216,9 +217,14 @@ fun CardRowsSkeleton(
             )
             Row(
                 // Sin scroll: la fila se recorta por la derecha como el
-                // carrusel real, que asoma la siguiente tarjeta.
+                // carrusel real, que asoma la siguiente tarjeta. El recorte es
+                // explícito: sin él las tarjetas que no caben se pintan fuera
+                // de la página, y en el pager de pestañas Colecciones queda
+                // justo a la izquierda de Más, que no tiene fondo: el esqueleto
+                // asomaba detrás de su menú.
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clipToBounds()
                     .wrapContentWidth(Alignment.Start, unbounded = true)
                     .padding(horizontal = Spacing.lg),
                 horizontalArrangement = Arrangement.spacedBy(cardSpacing)
