@@ -2163,6 +2163,14 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
             sharedFolderCount = foldersState.sharedFolders.size + foldersState.externalRoots.size,
             organizePendingCount = foldersState.organizePendingCount,
         )
+        // Volver a primer plano en Colecciones no cambia de pestaña (no pasa por
+        // onLoad): si la app se quedó abierta de un día para otro, "Un día como
+        // hoy" se recarga aquí.
+        val onCollections = appState.selectedTab.navTab() == MainTab.Collections
+        androidx.lifecycle.compose.LifecycleStartEffect(onCollections) {
+            if (onCollections) memoryFeedViewModel.ensureFresh()
+            onStopOrDispose {}
+        }
         var customizing by androidx.compose.runtime.saveable.rememberSaveable {
             androidx.compose.runtime.mutableStateOf(false)
         }
@@ -2185,10 +2193,7 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
             sections = layout.visibleSections(adaptiveOrder),
             onCustomize = { customizing = true },
             onLoad = {
-                val feedState = memoryFeedViewModel.state.value
-                if (feedState.rows.isEmpty() && !feedState.isLoading &&
-                    !(feedState.attempted && feedState.error == null)
-                ) memoryFeedViewModel.refresh()
+                memoryFeedViewModel.ensureFresh()
                 peopleViewModel.ensureLoaded()
                 favoritesViewModel.ensureLoaded()
                 // Solo la clave de teselas (un ajuste): los puntos del mapa no

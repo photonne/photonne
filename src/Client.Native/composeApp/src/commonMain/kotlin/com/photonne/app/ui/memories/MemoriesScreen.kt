@@ -38,7 +38,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -281,10 +280,11 @@ internal fun MemoryFeedScaffold(
     val hazeState = remember { HazeState() }
     val listState = rememberLazyListState()
     val reservedTop = subscreenChromeReservedTop()
-    LaunchedEffect(Unit) {
-        // Un intento fallido no cuenta como cargado: volver a entrar reintenta.
-        val blocked = state.attempted && state.error == null
-        if (state.rows.isEmpty() && !state.isLoading && !blocked) viewModel.refresh()
+    // Al entrar y al volver a primer plano: un intento fallido no cuenta como
+    // cargado (volver a entrar reintenta), y uno de otro día ya no vale.
+    androidx.lifecycle.compose.LifecycleStartEffect(viewModel) {
+        viewModel.ensureFresh()
+        onStopOrDispose {}
     }
     val open: (Memory) -> Unit = { memory ->
         viewModel.open(
