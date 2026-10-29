@@ -2188,9 +2188,8 @@ private fun CollectionsTabPage(host: AuthenticatedContentHost) {
         // Volver a primer plano en Colecciones no cambia de pestaña (no pasa por
         // onLoad): si la app se quedó abierta de un día para otro, "Un día como
         // hoy" se recarga aquí.
-        val onCollections = appState.selectedTab.navTab() == MainTab.Collections
-        androidx.lifecycle.compose.LifecycleStartEffect(onCollections) {
-            if (onCollections) memoryFeedViewModel.ensureFresh()
+        androidx.lifecycle.compose.LifecycleStartEffect(collectionsActive) {
+            if (collectionsActive) memoryFeedViewModel.ensureFresh()
             onStopOrDispose {}
         }
         var customizing by androidx.compose.runtime.saveable.rememberSaveable {
