@@ -1206,6 +1206,12 @@
     <string name="admin_settings_nightly_clustering">Reagrupar caras tras los modelos</string>
     <string name="admin_settings_nightly_trash_cleanup">Vaciar papelera caducada (retención y cuota)</string>
     <string name="admin_settings_nightly_indexing_coverage">Verificar cobertura de indexación</string>
+    <string name="admin_settings_nightly_interpolate">Deducir la ubicación de las fotos sin GPS a partir de las cercanas</string>
+    <string name="admin_settings_nightly_geocode">Poner nombre a los lugares de las fotos</string>
+    <string name="admin_settings_nightly_trips">Detectar viajes</string>
+    <string name="admin_settings_nightly_memories">Generar los recuerdos</string>
+    <string name="admin_settings_nightly_memories_hint">También se renuevan solos al cambiar el día, aunque las tareas nocturnas estén desactivadas.</string>
+    <string name="admin_settings_nightly_year_summaries">Vídeo resumen del año a final de diciembre (para quien lo active)</string>
     <string name="admin_settings_nightly_mode">Modo de proceso</string>
 
     <string name="admin_settings_notifications">Notificaciones</string>
