@@ -1,5 +1,8 @@
 package com.photonne.app.data.api
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 /**
  * Recuperación proactiva de conexión al volver la app a primer plano.
  *
@@ -21,7 +24,11 @@ class ForegroundRecovery(
     private val probe: LocalReachabilityProbe,
 ) {
     suspend fun onEnterForeground() {
-        recycler.recycle()
+        // Fuera del hilo principal: cerrar un socket TLS ocioso escribe el
+        // close_notify, y en Main eso es NetworkOnMainThreadException, que
+        // OkHttp relanza y tumba la app justo al volver a ella (con el pool
+        // vacío del arranque en frío no pasaba nada).
+        withContext(Dispatchers.Default) { recycler.recycle() }
         probe.runProbe()
     }
 }
