@@ -32,7 +32,9 @@ public class UtilityFolderTreeEndpoint : IEndpoint
 
         var isAdmin = user.IsInRole("Admin");
         var allFolders = await FoldersEndpoint.GetFoldersForUserAsync(
-            dbContext, userId, includeAssets: true, isAdmin, cancellationToken);
+            dbContext, userId, isAdmin, cancellationToken);
+        var summaries = await FoldersEndpoint.GetFolderAssetSummariesAsync(
+            dbContext, allFolders, binAware: true, cancellationToken);
 
         var folderIds = allFolders.Select(f => f.Id).ToList();
 
@@ -70,6 +72,7 @@ public class UtilityFolderTreeEndpoint : IEndpoint
         var folderDict = allFolders.ToDictionary(f => f.Id, f =>
         {
             var userPerm = permissions.FirstOrDefault(p => p.FolderId == f.Id);
+            var summary = FoldersEndpoint.SummaryOf(summaries, f.Id);
             return new FolderResponse
             {
                 Id = f.Id,
@@ -77,15 +80,9 @@ public class UtilityFolderTreeEndpoint : IEndpoint
                 Name = f.Name,
                 ParentFolderId = f.ParentFolderId,
                 CreatedAt = f.CreatedAt,
-                AssetCount = f.Assets.Count(a => FoldersEndpoint.IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null),
-                FirstAssetId = f.Assets
-                    .Where(a => FoldersEndpoint.IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                    .FirstOrDefault()?.Id,
-                PreviewAssetIds = f.Assets
-                    .Where(a => FoldersEndpoint.IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                    .Take(4).Select(a => a.Id).ToList(),
+                AssetCount = summary.Count,
+                FirstAssetId = summary.FirstId,
+                PreviewAssetIds = summary.PreviewIds,
                 IsOwner = FoldersEndpoint.OwnsByPath(f.Path, usernameToIdMap, userId)
                     || (isAdmin && FoldersEndpoint.IsInSharedSpace(f.Path))
                     || (userPerm?.CanManagePermissions ?? false),

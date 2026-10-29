@@ -150,9 +150,7 @@ public class FoldersEndpoint : IEndpoint
 
         // Find root folder: ExternalLibraryId matches and parent does NOT belong to this library
         var rootFolder = await dbContext.Folders
-            .Include(f => f.Assets)
             .Include(f => f.SubFolders)
-                .ThenInclude(sf => sf.Assets)
             .Where(f => f.ExternalLibraryId == libraryId &&
                         (f.ParentFolderId == null ||
                          !dbContext.Folders.Any(p => p.Id == f.ParentFolderId && p.ExternalLibraryId == libraryId)))
@@ -160,6 +158,10 @@ public class FoldersEndpoint : IEndpoint
 
         if (rootFolder == null)
             return TypedResults.NotFound(new ApiError("Library has not been scanned yet or has no indexed folders.", "library_not_scanned"));
+
+        // A library mirrors files as they are: no trash folders to count the other way.
+        var librarySummaries = await GetFolderAssetSummariesAsync(
+            dbContext, rootFolder.SubFolders.Prepend(rootFolder), binAware: false, cancellationToken);
 
         // Compute recursive asset counts for subfolders (single batch query)
         var libRecursiveCounts = new Dictionary<Guid, int>();
@@ -175,7 +177,7 @@ public class FoldersEndpoint : IEndpoint
             {
                 var sfNormPath = NormalizeVirtualPath(sf.Path);
                 var sfPrefix = sfNormPath + "/";
-                var directCount = sf.Assets.Count(a => a.DeletedAt == null);
+                var directCount = SummaryOf(librarySummaries, sf.Id).Count;
                 var descendantCount = allDescendants
                     .Where(d => d.Id != sf.Id && d.Path.StartsWith(sfPrefix, StringComparison.OrdinalIgnoreCase))
                     .Sum(d => d.AssetCount);
@@ -204,15 +206,9 @@ public class FoldersEndpoint : IEndpoint
             Name = rootFolder.Name,
             ParentFolderId = rootFolder.ParentFolderId,
             CreatedAt = rootFolder.CreatedAt,
-            AssetCount = rootFolder.Assets.Count(a => a.DeletedAt == null),
-            FirstAssetId = rootFolder.Assets
-                .Where(a => a.DeletedAt == null)
-                .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                .FirstOrDefault()?.Id,
-            PreviewAssetIds = rootFolder.Assets
-                .Where(a => a.DeletedAt == null)
-                .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                .Take(4).Select(a => a.Id).ToList(),
+            AssetCount = SummaryOf(librarySummaries, rootFolder.Id).Count,
+            FirstAssetId = SummaryOf(librarySummaries, rootFolder.Id).FirstId,
+            PreviewAssetIds = SummaryOf(librarySummaries, rootFolder.Id).PreviewIds,
             IsOwner = false,
             CanWrite = libAccess[rootFolder.Id].CanWrite,
             CanDelete = libAccess[rootFolder.Id].CanDelete,
@@ -228,15 +224,9 @@ public class FoldersEndpoint : IEndpoint
                 Name = sf.Name,
                 ParentFolderId = sf.ParentFolderId,
                 CreatedAt = sf.CreatedAt,
-                AssetCount = libRecursiveCounts.GetValueOrDefault(sf.Id, sf.Assets.Count(a => a.DeletedAt == null)),
-                FirstAssetId = sf.Assets
-                    .Where(a => a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                    .FirstOrDefault()?.Id,
-                PreviewAssetIds = sf.Assets
-                    .Where(a => a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                    .Take(4).Select(a => a.Id).ToList(),
+                AssetCount = libRecursiveCounts.GetValueOrDefault(sf.Id, SummaryOf(librarySummaries, sf.Id).Count),
+                FirstAssetId = SummaryOf(librarySummaries, sf.Id).FirstId,
+                PreviewAssetIds = SummaryOf(librarySummaries, sf.Id).PreviewIds,
                 IsOwner = false,
                 CanWrite = libAccess.GetValueOrDefault(sf.Id).CanWrite,
                 CanDelete = libAccess.GetValueOrDefault(sf.Id).CanDelete,
@@ -267,7 +257,8 @@ public class FoldersEndpoint : IEndpoint
         if (cache.TryGetValue(cacheKey, out List<FolderResponse>? cachedFolders) && cachedFolders != null)
             return TypedResults.Ok(cachedFolders);
 
-        var folders = await GetFoldersForUserAsync(dbContext, userId, includeAssets: true, isAdmin, cancellationToken);
+        var folders = await GetFoldersForUserAsync(dbContext, userId, isAdmin, cancellationToken);
+        var summaries = await GetFolderAssetSummariesAsync(dbContext, folders, binAware: true, cancellationToken);
 
         var folderIds = folders.Select(f => f.Id).ToList();
         var sharedCounts = await dbContext.FolderPermissions
@@ -317,15 +308,9 @@ public class FoldersEndpoint : IEndpoint
                 Name = f.Name,
                 ParentFolderId = f.ParentFolderId,
                 CreatedAt = f.CreatedAt,
-                AssetCount = f.Assets.Count(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null),
-                FirstAssetId = f.Assets
-                    .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                    .FirstOrDefault()?.Id,
-                PreviewAssetIds = f.Assets
-                    .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                    .Take(4).Select(a => a.Id).ToList(),
+                AssetCount = SummaryOf(summaries, f.Id).Count,
+                FirstAssetId = SummaryOf(summaries, f.Id).FirstId,
+                PreviewAssetIds = SummaryOf(summaries, f.Id).PreviewIds,
                 IsOwner = OwnsByPath(f.Path, usernameToIdMap, userId)
                     || (isAdmin && IsInSharedSpace(f.Path))
                     || (userPerm?.CanManagePermissions ?? false),
@@ -359,9 +344,7 @@ public class FoldersEndpoint : IEndpoint
         }
 
         var folder = await dbContext.Folders
-            .Include(f => f.Assets)
             .Include(f => f.SubFolders)
-                .ThenInclude(sf => sf.Assets)
             .FirstOrDefaultAsync(f => f.Id == folderId, cancellationToken);
 
         if (folder == null)
@@ -394,6 +377,9 @@ public class FoldersEndpoint : IEndpoint
         var excludedFolderIds = await AllowedFolderCache.GetExcludedFolderIdsAsync(dbContext, userId, cancellationToken);
         var pins = await GetPinsAsync(dbContext, userId, cancellationToken);
 
+        var summaries = await GetFolderAssetSummariesAsync(
+            dbContext, folder.SubFolders.Prepend(folder), binAware: true, cancellationToken);
+
         var subfolderIds = folder.SubFolders.Select(sf => sf.Id).ToList();
         var subfolderUserPerms = subfolderIds.Count > 0
             ? await dbContext.FolderPermissions
@@ -421,7 +407,7 @@ public class FoldersEndpoint : IEndpoint
             {
                 var sfNormPath = NormalizeVirtualPath(sf.Path);
                 var sfPrefix = sfNormPath + "/";
-                var directCount = sf.Assets.Count(a => isBin ? a.DeletedAt != null : a.DeletedAt == null);
+                var directCount = SummaryOf(summaries, sf.Id).Count;
                 var descendantCount = allDescendantFolders
                     .Where(d => d.Id != sf.Id && d.Path.StartsWith(sfPrefix, StringComparison.OrdinalIgnoreCase))
                     .Sum(d => d.AssetCount);
@@ -449,15 +435,9 @@ public class FoldersEndpoint : IEndpoint
             Name = folder.Name,
             ParentFolderId = folder.ParentFolderId,
             CreatedAt = folder.CreatedAt,
-            AssetCount = folder.Assets.Count(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null),
-            FirstAssetId = folder.Assets
-                .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                .FirstOrDefault()?.Id,
-            PreviewAssetIds = folder.Assets
-                .Where(a => IsBinPath(folder.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                .Take(4).Select(a => a.Id).ToList(),
+            AssetCount = SummaryOf(summaries, folder.Id).Count,
+            FirstAssetId = SummaryOf(summaries, folder.Id).FirstId,
+            PreviewAssetIds = SummaryOf(summaries, folder.Id).PreviewIds,
             IsOwner = ownerIdFromPath == userId
                 || (isAdmin && IsInSharedSpace(folder.Path))
                 || (userPermission?.CanManagePermissions ?? false),
@@ -477,15 +457,9 @@ public class FoldersEndpoint : IEndpoint
                 Name = sf.Name,
                 ParentFolderId = sf.ParentFolderId,
                 CreatedAt = sf.CreatedAt,
-                AssetCount = recursiveCounts.GetValueOrDefault(sf.Id, sf.Assets.Count(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)),
-                FirstAssetId = sf.Assets
-                    .Where(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                    .FirstOrDefault()?.Id,
-                PreviewAssetIds = sf.Assets
-                    .Where(a => IsBinPath(sf.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                    .Take(4).Select(a => a.Id).ToList(),
+                AssetCount = recursiveCounts.GetValueOrDefault(sf.Id, SummaryOf(summaries, sf.Id).Count),
+                FirstAssetId = SummaryOf(summaries, sf.Id).FirstId,
+                PreviewAssetIds = SummaryOf(summaries, sf.Id).PreviewIds,
                 IsOwner = OwnsByPath(sf.Path, usernameToIdMap, userId)
                     || (isAdmin && IsInSharedSpace(sf.Path))
                     || (subfolderUserPerms.GetValueOrDefault(sf.Id)?.CanManagePermissions ?? false),
@@ -606,7 +580,8 @@ public class FoldersEndpoint : IEndpoint
         if (cache.TryGetValue(treeCacheKey, out List<FolderResponse>? cachedTree) && cachedTree != null)
             return TypedResults.Ok(cachedTree);
 
-        var allFolders = await GetFoldersForUserAsync(dbContext, userId, includeAssets: true, isAdmin, cancellationToken);
+        var allFolders = await GetFoldersForUserAsync(dbContext, userId, isAdmin, cancellationToken);
+        var summaries = await GetFolderAssetSummariesAsync(dbContext, allFolders, binAware: true, cancellationToken);
 
         var folderIds = allFolders.Select(f => f.Id).ToList();
         var sharedCounts = await dbContext.FolderPermissions
@@ -654,15 +629,9 @@ public class FoldersEndpoint : IEndpoint
                 Name = f.Name,
                 ParentFolderId = f.ParentFolderId,
                 CreatedAt = f.CreatedAt,
-                AssetCount = f.Assets.Count(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null),
-                FirstAssetId = f.Assets
-                    .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                    .FirstOrDefault()?.Id,
-                PreviewAssetIds = f.Assets
-                    .Where(a => IsBinPath(f.Path) ? a.DeletedAt != null : a.DeletedAt == null)
-                    .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
-                    .Take(4).Select(a => a.Id).ToList(),
+                AssetCount = SummaryOf(summaries, f.Id).Count,
+                FirstAssetId = SummaryOf(summaries, f.Id).FirstId,
+                PreviewAssetIds = SummaryOf(summaries, f.Id).PreviewIds,
                 IsOwner = OwnsByPath(f.Path, usernameToIdMap, userId)
                     || (isAdmin && IsInSharedSpace(f.Path))
                     || (userPerm?.CanManagePermissions ?? false),
@@ -1546,17 +1515,10 @@ public class FoldersEndpoint : IEndpoint
     internal static async Task<List<Folder>> GetFoldersForUserAsync(
         ApplicationDbContext dbContext,
         Guid userId,
-        bool includeAssets,
         bool isAdmin,
         CancellationToken ct)
     {
-        var query = dbContext.Folders.AsQueryable();
-        if (includeAssets)
-        {
-            query = query.Include(f => f.Assets);
-        }
-
-        var allFolders = await query.ToListAsync(ct);
+        var allFolders = await dbContext.Folders.ToListAsync(ct);
         var permissions = await dbContext.FolderPermissions.ToListAsync(ct);
 
         // Structural containers (/assets, /assets/users) never grant access —
@@ -1634,6 +1596,59 @@ public class FoldersEndpoint : IEndpoint
         AddAncestorFolders(allFolders, allowedIds);
 
         return allFolders.Where(f => allowedIds.Contains(f.Id)).ToList();
+    }
+
+    /// <summary>What a folder card shows of its own photos: how many and the newest few.</summary>
+    internal sealed record FolderAssetSummary(int Count, List<Guid> PreviewIds)
+    {
+        public Guid? FirstId => PreviewIds.Count > 0 ? PreviewIds[0] : null;
+    }
+
+    private const int FolderPreviewCount = 4;
+
+    internal static FolderAssetSummary SummaryOf(Dictionary<Guid, FolderAssetSummary> summaries, Guid folderId) =>
+        summaries.TryGetValue(folderId, out var summary) ? summary : new FolderAssetSummary(0, []);
+
+    /// <summary>
+    /// Direct asset count and newest <see cref="FolderPreviewCount"/> asset ids
+    /// of each folder, computed in the database. A trash folder
+    /// (<see cref="IsBinPath"/>, when <paramref name="binAware"/>) counts its
+    /// trashed assets, any other folder its live ones. Loading
+    /// <c>Folder.Assets</c> instead materialised every asset of every folder,
+    /// which on a large library took longer than the clients wait.
+    /// </summary>
+    internal static async Task<Dictionary<Guid, FolderAssetSummary>> GetFolderAssetSummariesAsync(
+        ApplicationDbContext dbContext,
+        IEnumerable<Folder> folders,
+        bool binAware,
+        CancellationToken ct)
+    {
+        var byTrash = folders
+            .GroupBy(f => binAware && IsBinPath(f.Path))
+            .Select(g => (Trashed: g.Key, Ids: g.Select(f => f.Id).Distinct().ToList()));
+
+        var summaries = new Dictionary<Guid, FolderAssetSummary>();
+        foreach (var (trashed, ids) in byTrash)
+        {
+            var rows = await dbContext.Folders
+                .AsNoTracking()
+                .Where(f => ids.Contains(f.Id))
+                .Select(f => new
+                {
+                    f.Id,
+                    Count = f.Assets.Count(a => trashed ? a.DeletedAt != null : a.DeletedAt == null),
+                    PreviewIds = f.Assets
+                        .Where(a => trashed ? a.DeletedAt != null : a.DeletedAt == null)
+                        .OrderByDescending(a => a.ScannedAt).ThenByDescending(a => a.FileModifiedAt)
+                        .Select(a => a.Id)
+                        .Take(FolderPreviewCount)
+                        .ToList()
+                })
+                .ToListAsync(ct);
+            foreach (var row in rows)
+                summaries[row.Id] = new FolderAssetSummary(row.Count, row.PreviewIds);
+        }
+        return summaries;
     }
 
     internal static void AddAncestorFolders(List<Folder> allFolders, HashSet<Guid> allowedIds)

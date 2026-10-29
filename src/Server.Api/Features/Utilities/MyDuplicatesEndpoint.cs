@@ -35,25 +35,54 @@ public class MyDuplicatesEndpoint : IEndpoint
         var allowedFolderIds = await allowedFolders.GetAllowedFolderIdsAsync(
             dbContext, userId, userRootPath, cancellationToken);
 
-        var query = dbContext.Assets
-            .Include(a => a.Exif)
-            .Include(a => a.Thumbnails)
-            .Include(a => a.Tags)
-            .Include(a => a.UserTags)
-                .ThenInclude(ut => ut.UserTag)
-            .Where(a => a.DeletedAt == null && !a.IsArchived && !string.IsNullOrEmpty(a.Checksum)
+        var visible = dbContext.Assets
+            .AsNoTracking()
+            .Where(a => a.DeletedAt == null && !a.IsArchived && a.Checksum != null && a.Checksum != ""
                      && a.FolderId.HasValue && allowedFolderIds.Contains(a.FolderId.Value));
 
-        var assets = await query.ToListAsync(cancellationToken);
-
-        var groups = assets
+        // The checksums with 2+ copies are found in the database, and only
+        // those assets are read, projected to what the response needs.
+        // Materialising every visible asset with its EXIF, thumbnails and tags
+        // to group them here took longer than the clients' socket timeout on
+        // large libraries.
+        var duplicateChecksums = visible
             .GroupBy(a => a.Checksum)
             .Where(g => g.Count() > 1)
+            .Select(g => g.Key);
+
+        var rows = await visible
+            .Where(a => duplicateChecksums.Contains(a.Checksum))
+            .Select(a => new DuplicateRow
+            {
+                Id = a.Id,
+                FileName = a.FileName,
+                FullPath = a.FullPath,
+                FileSize = a.FileSize,
+                CapturedAt = a.CapturedAt,
+                FileModifiedAt = a.FileModifiedAt,
+                Extension = a.Extension,
+                ScannedAt = a.ScannedAt,
+                Type = a.Type,
+                Checksum = a.Checksum,
+                HasExif = a.Exif != null,
+                HasThumbnails = a.Thumbnails.Any(),
+                Width = a.Exif != null ? a.Exif.Width : null,
+                Height = a.Exif != null ? a.Exif.Height : null,
+                AutoTags = a.Tags.Select(t => t.TagType).ToList(),
+                UserTags = a.UserTags.Select(ut => ut.UserTag.Name).ToList(),
+                IsFavorite = a.IsFavorite,
+                IsArchived = a.IsArchived
+            })
+            .AsSplitQuery()
+            .ToListAsync(cancellationToken);
+
+        var groups = rows
+            .GroupBy(a => a.Checksum)
             .Select(g => new UserDuplicateGroupResponse
             {
                 Hash = g.Key,
                 TotalSize = g.Sum(a => a.FileSize),
-                Assets = g.Select(a => MapToResponse(a)).ToList()
+                Assets = g.Select(MapToResponse).ToList()
             })
             .OrderByDescending(g => g.TotalSize)
             .ToList();
@@ -61,7 +90,29 @@ public class MyDuplicatesEndpoint : IEndpoint
         return TypedResults.Ok(groups);
     }
 
-    private static TimelineResponse MapToResponse(Shared.Models.Asset a) => new()
+    private sealed class DuplicateRow
+    {
+        public Guid Id { get; init; }
+        public string FileName { get; init; } = string.Empty;
+        public string FullPath { get; init; } = string.Empty;
+        public long FileSize { get; init; }
+        public DateTime CapturedAt { get; init; }
+        public DateTime FileModifiedAt { get; init; }
+        public string Extension { get; init; } = string.Empty;
+        public DateTime ScannedAt { get; init; }
+        public Shared.Models.AssetType Type { get; init; }
+        public string Checksum { get; init; } = string.Empty;
+        public bool HasExif { get; init; }
+        public bool HasThumbnails { get; init; }
+        public int? Width { get; init; }
+        public int? Height { get; init; }
+        public List<Shared.Models.AssetTagType> AutoTags { get; init; } = new();
+        public List<string> UserTags { get; init; } = new();
+        public bool IsFavorite { get; init; }
+        public bool IsArchived { get; init; }
+    }
+
+    private static TimelineResponse MapToResponse(DuplicateRow a) => new()
     {
         Id = a.Id,
         FileName = a.FileName,
@@ -73,21 +124,20 @@ public class MyDuplicatesEndpoint : IEndpoint
         ScannedAt = a.ScannedAt,
         Type = a.Type.ToString(),
         Checksum = a.Checksum,
-        HasExif = a.Exif != null,
-        HasThumbnails = a.Thumbnails.Any(),
+        HasExif = a.HasExif,
+        HasThumbnails = a.HasThumbnails,
         SyncStatus = AssetSyncStatus.Synced,
-        Width = a.Exif?.Width,
-        Height = a.Exif?.Height,
+        Width = a.Width,
+        Height = a.Height,
         Tags = BuildTagList(a),
         IsFavorite = a.IsFavorite,
         IsArchived = a.IsArchived
     };
 
-    private static List<string> BuildTagList(Shared.Models.Asset asset)
+    private static List<string> BuildTagList(DuplicateRow asset)
     {
-        var autoTags = asset.Tags.Select(t => t.TagType.ToString());
-        var userTags = asset.UserTags.Select(t => t.UserTag.Name);
-        return autoTags.Concat(userTags)
+        var autoTags = asset.AutoTags.Select(t => t.ToString());
+        return autoTags.Concat(asset.UserTags)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(t => t)
             .ToList();
