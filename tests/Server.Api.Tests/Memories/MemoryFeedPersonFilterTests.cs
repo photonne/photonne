@@ -1,6 +1,8 @@
 using System.Net.Http.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Photonne.Server.Api.Features.Memories.Generation;
 using Photonne.Server.Api.Shared.Models;
+using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Tests.Infrastructure;
 
 namespace Photonne.Server.Api.Tests.Memories;
@@ -56,7 +58,14 @@ public class MemoryFeedPersonFilterTests : IntegrationTestBase
         await AddMemoryAsync(alice.Id, MemoryKind.PersonThroughYears, PeopleMemoryKeys.Years(martina), "Martina a lo largo de los años");
         await AddMemoryAsync(alice.Id, MemoryKind.PeopleTogether, PeopleMemoryKeys.Together(first, second), "Martina y Joan");
         await AddMemoryAsync(alice.Id, MemoryKind.PersonThroughYears, PeopleMemoryKeys.Years(pau), "Pau a lo largo de los años");
-        await AddMemoryAsync(alice.Id, MemoryKind.OnThisDay, "onthisday:2020-10-01", "Hace 4 años");
+        // Today's date: the feed only shows "Un día como hoy" for today.
+        DateTime today;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var settings = scope.ServiceProvider.GetRequiredService<SettingsService>();
+            today = MetadataTimeZone.LocalNow(await MetadataTimeZone.ResolveAsync(settings));
+        }
+        await AddMemoryAsync(alice.Id, MemoryKind.OnThisDay, $"onthisday:2020-{today.Month:D2}-{today.Day:D2}", "Hace 4 años");
         // Same person id, another owner: must never leak in.
         await AddMemoryAsync(bob.Id, MemoryKind.PersonThroughYears, PeopleMemoryKeys.Years(martina), "Ajena");
 

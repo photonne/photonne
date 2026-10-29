@@ -385,47 +385,14 @@ public class NightlySchedulerService : BackgroundService
                 ct);
     }
 
-    /// <summary>Regenerates every user's Recuerdos feed. Per-user by necessity:
-    /// face identity is private, so the same shared photo yields different
-    /// memories for different people.</summary>
+    /// <summary>Regenerates every user's Recuerdos feed (see
+    /// <see cref="Features.Memories.Generation.MemoryGenerationRunner"/>).</summary>
     private async Task RunMemoriesAsync(CancellationToken ct)
     {
         Console.WriteLine("[NIGHTLY] Memories generation started.");
-        int created = 0, updated = 0, removed = 0, usersProcessed = 0, usersFailed = 0;
 
-        using var scope = _scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-        var userIds = await dbContext.Users
-            .Where(u => u.IsActive)
-            .Select(u => u.Id)
-            .ToListAsync(ct);
-
-        foreach (var userId in userIds)
-        {
-            if (ct.IsCancellationRequested) break;
-            try
-            {
-                // A scope per user: MemoryGenerationService depends on
-                // AssetVisibilityService, which caches permission snapshots on the
-                // instance and must never be shared across users.
-                using var userScope = _scopeFactory.CreateScope();
-                var generation = userScope.ServiceProvider
-                    .GetRequiredService<Features.Memories.Generation.MemoryGenerationService>();
-
-                var result = await generation.RunForUserAsync(userId, ct);
-                created += result.Created;
-                updated += result.Updated;
-                removed += result.Removed;
-                usersProcessed++;
-            }
-            catch (OperationCanceledException) { throw; }
-            catch (Exception ex)
-            {
-                usersFailed++;
-                Console.WriteLine($"[NIGHTLY] Memories error for user {userId}: {ex.Message}");
-            }
-        }
+        var (usersProcessed, usersFailed, created, updated, removed) =
+            await Features.Memories.Generation.MemoryGenerationRunner.RunForAllUsersAsync(_scopeFactory, "NIGHTLY", ct);
 
         Console.WriteLine($"[NIGHTLY] Memories done — users:{usersProcessed} created:{created} updated:{updated} removed:{removed} failed:{usersFailed}.");
 
