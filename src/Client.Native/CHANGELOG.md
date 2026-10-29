@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.7.1](https://github.com/photonne/photonne/compare/native-v2.7.0...native-v2.7.1) (2026-10-29)
+
+
+### Correcciones
+
+* **native:** no cerrar la app al volver a ella en Android ([ae0b294](https://github.com/photonne/photonne/commit/ae0b29449a41f172eafc7e5fcb7570254f57b1a2))
+* **native:** recortar el esqueleto de Colecciones dentro de su página ([a59d682](https://github.com/photonne/photonne/commit/a59d6828c026dfe6c9c33cf7bea0d3b9ac44263b))
+
+
+### Otros cambios
+
+* **native:** una sola variable para saber si Colecciones es la pestaña activa ([410befe](https://github.com/photonne/photonne/commit/410befe25b671eb4bcc2767ade103f4d0266ccbf))
+
 ## [2.7.0](https://github.com/photonne/photonne/compare/native-v2.6.0...native-v2.7.0) (2026-10-29)
 
 
