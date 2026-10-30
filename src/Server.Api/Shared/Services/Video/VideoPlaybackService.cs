@@ -10,7 +10,8 @@ namespace Photonne.Server.Api.Shared.Services.Video;
 /// Makes the playback copies (<see cref="AssetPlayback"/>), one video at a
 /// time: transcoding is the heaviest thing the server does, and a library
 /// import must not turn into twenty ffmpegs at once. Copies live under
-/// <c>{ThumbnailsPath}/.playback/{assetId}.mp4</c>.
+/// <c>{Video:PlaybackPath}/{assetId}.mp4</c> (<see cref="VideoPlaybackStorage"/>),
+/// and stop while that disk is down to its reserve.
 /// </summary>
 public sealed class VideoPlaybackService(
     ApplicationDbContext db,
@@ -22,13 +23,28 @@ public sealed class VideoPlaybackService(
     public const int MaxAttempts = 3;
     private static readonly TimeSpan RetryAfter = TimeSpan.FromHours(6);
 
-    public string PlaybackRoot { get; } = Path.Combine(configuration["ThumbnailsPath"] ?? "/data/thumbnails", ".playback");
+    private readonly VideoPlaybackStorage storage = VideoPlaybackStorage.From(configuration);
+
+    public string PlaybackRoot => storage.Root;
+
+    /// <summary>
+    /// Set when the last <see cref="ProcessNextAsync"/> stopped because the
+    /// disk is down to its reserve: free bytes, or null when they can't be read.
+    /// </summary>
+    public (long? AvailableBytes, long MinFreeBytes)? OutOfSpace { get; private set; }
 
     private readonly VideoTranscodeOptions options = VideoTranscodeOptions.From(configuration, logger);
 
-    /// <summary>Looks at the next video without a decision; false when there is none.</summary>
+    /// <summary>
+    /// Looks at the next video without a decision; false when there is none,
+    /// or when there's no room for its copy (<see cref="OutOfSpace"/>): the
+    /// video keeps its place in the queue and nothing is marked failed.
+    /// </summary>
     public async Task<bool> ProcessNextAsync(CancellationToken ct)
     {
+        OutOfSpace = null;
+        if (!HasRoom(0)) return false;
+
         var retryBefore = DateTime.UtcNow - RetryAfter;
         var next = await db.Assets
             .Where(a => a.Type == AssetType.Video && a.DeletedAt == null && !a.IsFileMissing)
@@ -68,6 +84,12 @@ public sealed class VideoPlaybackService(
                 row.Status = PlaybackStatus.NotNeeded;
                 row.FilePath = null;
             }
+            else if (!HasRoom(new FileInfo(source).Length))
+            {
+                // Untouched, so it's picked first again once there is room.
+                if (db.Entry(row).State == EntityState.Added) db.Entry(row).State = EntityState.Detached;
+                return false;
+            }
             else
             {
                 var target = Path.Combine(PlaybackRoot, $"{next.Id}.mp4");
@@ -106,6 +128,15 @@ public sealed class VideoPlaybackService(
         return true;
     }
 
+    private bool HasRoom(long sourceBytes)
+    {
+        if (storage.MinFreeBytes <= 0) return true;
+        var available = storage.AvailableBytes();
+        if (available is { } bytes && storage.HasRoom(bytes, sourceBytes)) return true;
+        OutOfSpace = (available, storage.MinFreeBytes);
+        return false;
+    }
+
     private static void Fail(AssetPlayback row, string reason)
     {
         row.Status = PlaybackStatus.Failed;
@@ -113,9 +144,22 @@ public sealed class VideoPlaybackService(
         row.Attempts++;
     }
 
-    /// <summary>Deletes copies whose video is gone (the row went with the asset).</summary>
+    /// <summary>
+    /// Deletes copies whose video is gone (the row went with the asset), and
+    /// forgets copies that are gone from the disk (deleted by hand to free
+    /// space, or left behind on an old <c>Video:PlaybackPath</c>) so they are
+    /// made again; meanwhile the original is played.
+    /// </summary>
     public async Task<int> SweepOrphansAsync(CancellationToken ct)
     {
+        var ready = await db.AssetPlaybacks
+            .Where(p => p.Status == PlaybackStatus.Ready)
+            .Select(p => new { p.AssetId, p.FilePath })
+            .ToListAsync(ct);
+        var lost = ready.Where(p => p.FilePath is null || !File.Exists(p.FilePath)).Select(p => p.AssetId).ToList();
+        if (lost.Count > 0)
+            await db.AssetPlaybacks.Where(p => lost.Contains(p.AssetId) && p.Status == PlaybackStatus.Ready).ExecuteDeleteAsync(ct);
+
         if (!Directory.Exists(PlaybackRoot)) return 0;
         var files = Directory.GetFiles(PlaybackRoot, "*.mp4");
         var ids = files
@@ -215,8 +259,11 @@ public sealed class VideoPlaybackWorker(
             return;
         }
         var encoding = VideoTranscodeOptions.From(configuration, logger);
-        logger.LogInformation("Video playback copies: encoder {Encoder}, threads {Threads}",
-            encoding.Encoder, encoding.Threads > 0 ? encoding.Threads.ToString() : "auto");
+        var storage = VideoPlaybackStorage.From(configuration);
+        logger.LogInformation("Video playback copies: encoder {Encoder}, threads {Threads}, in {Root}, keeping {MinFreeGb} GB free",
+            encoding.Encoder, encoding.Threads > 0 ? encoding.Threads.ToString() : "auto",
+            storage.Root, storage.MinFreeBytes / (1024 * 1024 * 1024));
+        var outOfSpace = false;
 
         try
         {
@@ -227,7 +274,24 @@ public sealed class VideoPlaybackWorker(
                 {
                     using var scope = scopeFactory.CreateScope();
                     var service = scope.ServiceProvider.GetRequiredService<VideoPlaybackService>();
-                    if (await service.ProcessNextAsync(stoppingToken)) continue;
+                    var processed = await service.ProcessNextAsync(stoppingToken);
+                    if (service.OutOfSpace is { } space)
+                    {
+                        // Once per pause, not every five minutes.
+                        if (!outOfSpace)
+                            logger.LogWarning(
+                                "Video playback copies paused: {Root} has {AvailableGb} GB free and keeps {MinFreeGb} GB (Video:MinFreeSpaceGb)",
+                                storage.Root,
+                                space.AvailableBytes is { } bytes ? (bytes / (1024.0 * 1024 * 1024)).ToString("0.#") : "?",
+                                space.MinFreeBytes / (1024 * 1024 * 1024));
+                        outOfSpace = true;
+                    }
+                    else if (outOfSpace)
+                    {
+                        logger.LogInformation("Video playback copies resumed: there is room in {Root} again", storage.Root);
+                        outOfSpace = false;
+                    }
+                    if (processed) continue;
                     await service.SweepOrphansAsync(stoppingToken);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
