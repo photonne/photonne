@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.1](https://github.com/photonne/photonne/compare/server-v2.11.0...server-v2.11.1) (2026-10-30)
+
+
+### Correcciones
+
+* **spa:** no mostrar un error 500 al salir de los ajustes del servidor ([9dab57a](https://github.com/photonne/photonne/commit/9dab57a6111d604c4530346ad2c6f9f2ab5932cc))
+
 ## [2.11.0](https://github.com/photonne/photonne/compare/server-v2.10.1...server-v2.11.0) (2026-10-29)
 
 
