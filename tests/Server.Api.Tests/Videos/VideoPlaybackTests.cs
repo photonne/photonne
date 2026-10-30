@@ -1,7 +1,11 @@
 using System.Diagnostics;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Shared.Models;
 using Photonne.Server.Api.Shared.Services.Video;
 using Photonne.Server.Api.Tests.Fixtures;
@@ -95,6 +99,89 @@ public class VideoPlaybackTests : IntegrationTestBase
         using (var scope = Factory.Services.CreateScope())
             await scope.ServiceProvider.GetRequiredService<VideoPlaybackService>().SweepOrphansAsync(CancellationToken.None);
         Assert.False(File.Exists(copy));
+    }
+
+    /// <summary>The service as the server builds it, with some Video:* settings on top.</summary>
+    private VideoPlaybackService Service(IServiceScope scope, params (string Key, string? Value)[] video)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddConfiguration(scope.ServiceProvider.GetRequiredService<IConfiguration>())
+            .AddInMemoryCollection(video.Select(v => new KeyValuePair<string, string?>(v.Key, v.Value)))
+            .Build();
+        return new VideoPlaybackService(
+            scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(),
+            scope.ServiceProvider.GetRequiredService<SettingsService>(),
+            configuration,
+            NullLogger<VideoPlaybackService>.Instance);
+    }
+
+    [Fact]
+    public async Task Waits_without_failing_while_the_disk_is_down_to_its_reserve()
+    {
+        var (owner, _) = await CreateAuthenticatedUserAsync();
+        var directory = Path.Combine(Factory.InternalAssetsPath, "users", owner.Username, "Videos");
+        Directory.CreateDirectory(directory);
+        Ffmpeg($"-f lavfi -i color=c=blue:s=64x48:d=1 -c:v mpeg4 \"{Path.Combine(directory, "full.avi")}\"");
+        var video = await CreateVideoAsync(owner, "full.avi");
+        var root = Path.Combine(Path.GetTempPath(), "photonne-playback-" + Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            using (var scope = Factory.Services.CreateScope())
+            {
+                // No disk has a petabyte free.
+                var service = Service(scope, ("Video:PlaybackPath", root), ("Video:MinFreeSpaceGb", "1000000"));
+                Assert.False(await service.ProcessNextAsync(CancellationToken.None));
+                Assert.NotNull(service.OutOfSpace);
+            }
+            Assert.False(await WithDbContextAsync(db => db.AssetPlaybacks.AnyAsync(p => p.AssetId == video)));
+
+            using (var scope = Factory.Services.CreateScope())
+            {
+                var service = Service(scope, ("Video:PlaybackPath", root), ("Video:MinFreeSpaceGb", "0"));
+                for (var i = 0; i < 500 && await service.ProcessNextAsync(CancellationToken.None); i++) { }
+                Assert.Null(service.OutOfSpace);
+            }
+            var row = await WithDbContextAsync(db => db.AssetPlaybacks.AsNoTracking().SingleAsync(p => p.AssetId == video));
+            Assert.Equal(PlaybackStatus.Ready, row.Status);
+            Assert.Equal(Path.Combine(root, $"{video}.mp4"), row.FilePath);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task A_copy_deleted_by_hand_is_forgotten_and_made_again()
+    {
+        var (owner, client) = await CreateAuthenticatedUserAsync();
+        var directory = Path.Combine(Factory.InternalAssetsPath, "users", owner.Username, "Videos");
+        Directory.CreateDirectory(directory);
+        Ffmpeg($"-f lavfi -i color=c=green:s=64x48:d=1 -c:v mpeg4 \"{Path.Combine(directory, "lost.avi")}\"");
+        var video = await CreateVideoAsync(owner, "lost.avi");
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var service = scope.ServiceProvider.GetRequiredService<VideoPlaybackService>();
+            for (var i = 0; i < 500 && await service.ProcessNextAsync(CancellationToken.None); i++) { }
+        }
+        var copy = (await WithDbContextAsync(db => db.AssetPlaybacks.AsNoTracking().SingleAsync(p => p.AssetId == video))).FilePath!;
+        File.Delete(copy);
+
+        // Meanwhile the original plays.
+        var response = await client.GetAsync($"/api/assets/{video}/playback");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(new FileInfo(Path.Combine(directory, "lost.avi")).Length, (await response.Content.ReadAsByteArrayAsync()).Length);
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var service = scope.ServiceProvider.GetRequiredService<VideoPlaybackService>();
+            await service.SweepOrphansAsync(CancellationToken.None);
+            Assert.False(await WithDbContextAsync(db => db.AssetPlaybacks.AnyAsync(p => p.AssetId == video)));
+            for (var i = 0; i < 500 && await service.ProcessNextAsync(CancellationToken.None); i++) { }
+        }
+        Assert.True(File.Exists(copy));
     }
 
     [Fact]

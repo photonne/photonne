@@ -35,6 +35,12 @@ services:
       # the container's cpus limit says.
       - Video__Encoder=${VIDEO_ENCODER:-software}
       - Video__Threads=${VIDEO_THREADS:-0}
+      # The copies stop while their disk has less than this many GB free (0:
+      # no limit). By default they go under /data/thumbnails/.playback; to put
+      # them on another disk, mount it (e.g. - /mnt/hdd/playback:/data/playback)
+      # and set VIDEO_PLAYBACK_PATH=/data/playback.
+      - Video__MinFreeSpaceGb=${VIDEO_MIN_FREE_SPACE_GB:-10}
+      - Video__PlaybackPath=${VIDEO_PLAYBACK_PATH:-}
       # Sign-in with an OpenID Connect provider (Authentik, Keycloak,
       # Authelia…). Redirect URI to register: <public URL>/api/auth/oidc/callback
       - Oidc__Enabled=${OIDC_ENABLED:-false}
