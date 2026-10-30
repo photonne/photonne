@@ -260,6 +260,21 @@ test.describe('server settings', () => {
 		expect(state.saved).toContainEqual(['NightlyTaskSettings.LastRunDate', '']);
 	});
 
+	test('leaves the settings for another admin tab without crashing', async ({ page }) => {
+		const errors: Error[] = [];
+		page.on('pageerror', (error) => errors.push(error));
+		await open(page, '/admin/settings/server');
+		await expect(page.getByLabel('URL pública')).toBeVisible();
+
+		await page
+			.getByRole('navigation', { name: 'Secciones de administración' })
+			.getByRole('link', { name: 'Usuarios' })
+			.click();
+		await expect(page).toHaveURL(/\/admin\/users$/);
+		await expect(page.getByRole('heading', { name: 'Usuarios', level: 1 })).toBeVisible();
+		expect(errors).toEqual([]);
+	});
+
 	test('is read-only in the demo', async ({ page }) => {
 		const api = await fakeApi(page, { signedIn: true, role: 'Admin' });
 		adminState(api.state).demo = true;
