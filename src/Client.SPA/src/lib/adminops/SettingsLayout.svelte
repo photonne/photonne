@@ -1,17 +1,18 @@
 <script lang="ts">
-	import { page } from '$app/state';
+	import type { Snippet } from 'svelte';
 	import '#lib/admin/admin.css';
-	import '#lib/adminops/adminops.css';
-	import { sectionGroups, sections } from '#lib/adminops/settings-sections.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import Tabs from '#lib/components/ui/Tabs.svelte';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
-	import type { LayoutProps } from './$types';
+	import './adminops.css';
+	import { sectionGroups, sections } from './settings-sections.js';
 
-	let { children }: LayoutProps = $props();
-
-	const current = $derived(page.params.section);
+	// A component the section page wraps itself in, not a +layout.svelte: an
+	// extra layout level makes leaving the settings for another admin tab
+	// crash SvelteKit's root (it reads `.data` of the node that just went away)
+	// and show a 500.
+	let { current, children }: { current: string; children: Snippet } = $props();
 
 	// One section navigation: a grouped list at the side on a wide screen,
 	// the same sections as tabs on a narrow one (only one is ever shown).
