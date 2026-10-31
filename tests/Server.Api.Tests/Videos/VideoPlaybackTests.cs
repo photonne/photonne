@@ -185,6 +185,77 @@ public class VideoPlaybackTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task The_old_hidden_folder_is_renamed_and_its_rows_follow()
+    {
+        var (owner, client) = await CreateAuthenticatedUserAsync();
+        var directory = Path.Combine(Factory.InternalAssetsPath, "users", owner.Username, "Videos");
+        Directory.CreateDirectory(directory);
+        Ffmpeg($"-f lavfi -i color=c=white:s=64x48:d=1 -c:v mpeg4 \"{Path.Combine(directory, "hidden.avi")}\"");
+        var video = await CreateVideoAsync(owner, "hidden.avi");
+
+        string thumbnails;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var service = scope.ServiceProvider.GetRequiredService<VideoPlaybackService>();
+            for (var i = 0; i < 500 && await service.ProcessNextAsync(CancellationToken.None); i++) { }
+            thumbnails = Path.GetDirectoryName(service.PlaybackRoot)!;
+        }
+        // Put it back the way an older server left it.
+        var visible = Path.Combine(thumbnails, ThumbnailFolders.Playback);
+        var hidden = Path.Combine(thumbnails, ".playback");
+        Directory.Move(visible, hidden);
+        var hiddenCopy = Path.Combine(hidden, $"{video}.mp4");
+        await WithDbContextAsync(db => db.AssetPlaybacks.Where(p => p.AssetId == video)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.FilePath, hiddenCopy)));
+
+        using (var scope = Factory.Services.CreateScope())
+            await ThumbnailFolders.MoveLegacyAsync(thumbnails, scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(), NullLogger.Instance);
+
+        Assert.False(Directory.Exists(hidden));
+        var copy = Path.Combine(visible, $"{video}.mp4");
+        Assert.True(File.Exists(copy));
+        Assert.Equal(copy, (await WithDbContextAsync(db => db.AssetPlaybacks.AsNoTracking().SingleAsync(p => p.AssetId == video))).FilePath);
+        var response = await client.GetAsync($"/api/assets/{video}/playback");
+        Assert.Equal(new FileInfo(copy).Length, (await response.Content.ReadAsByteArrayAsync()).Length);
+    }
+
+    [Fact]
+    public async Task A_copy_moved_along_with_the_playback_path_is_kept()
+    {
+        var (owner, _) = await CreateAuthenticatedUserAsync();
+        var directory = Path.Combine(Factory.InternalAssetsPath, "users", owner.Username, "Videos");
+        Directory.CreateDirectory(directory);
+        Ffmpeg($"-f lavfi -i color=c=yellow:s=64x48:d=1 -c:v mpeg4 \"{Path.Combine(directory, "moved.avi")}\"");
+        var video = await CreateVideoAsync(owner, "moved.avi");
+        var root = Path.Combine(Path.GetTempPath(), "photonne-playback-" + Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            using (var scope = Factory.Services.CreateScope())
+            {
+                var service = scope.ServiceProvider.GetRequiredService<VideoPlaybackService>();
+                for (var i = 0; i < 500 && await service.ProcessNextAsync(CancellationToken.None); i++) { }
+            }
+            var old = (await WithDbContextAsync(db => db.AssetPlaybacks.AsNoTracking().SingleAsync(p => p.AssetId == video))).FilePath!;
+            Directory.CreateDirectory(root);
+            var moved = Path.Combine(root, Path.GetFileName(old));
+            File.Move(old, moved);
+
+            using (var scope = Factory.Services.CreateScope())
+                await Service(scope, ("Video:PlaybackPath", root)).SweepOrphansAsync(CancellationToken.None);
+
+            var row = await WithDbContextAsync(db => db.AssetPlaybacks.AsNoTracking().SingleAsync(p => p.AssetId == video));
+            Assert.Equal(PlaybackStatus.Ready, row.Status);
+            Assert.Equal(moved, row.FilePath);
+            Assert.True(File.Exists(moved));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Someone_else_cant_play_it()
     {
         var owner = await CreateUserAsync();

@@ -145,20 +145,32 @@ public sealed class VideoPlaybackService(
     }
 
     /// <summary>
-    /// Deletes copies whose video is gone (the row went with the asset), and
-    /// forgets copies that are gone from the disk (deleted by hand to free
-    /// space, or left behind on an old <c>Video:PlaybackPath</c>) so they are
-    /// made again; meanwhile the original is played.
+    /// Deletes copies whose video is gone (the row went with the asset). A
+    /// copy missing from where its row says is looked for in
+    /// <see cref="PlaybackRoot"/> — the folder was moved along with a new
+    /// <c>Video:PlaybackPath</c> — and otherwise forgotten (deleted by hand to
+    /// free space) so it is made again; meanwhile the original is played.
     /// </summary>
     public async Task<int> SweepOrphansAsync(CancellationToken ct)
     {
-        var ready = await db.AssetPlaybacks
-            .Where(p => p.Status == PlaybackStatus.Ready)
-            .Select(p => new { p.AssetId, p.FilePath })
-            .ToListAsync(ct);
-        var lost = ready.Where(p => p.FilePath is null || !File.Exists(p.FilePath)).Select(p => p.AssetId).ToList();
-        if (lost.Count > 0)
-            await db.AssetPlaybacks.Where(p => lost.Contains(p.AssetId) && p.Status == PlaybackStatus.Ready).ExecuteDeleteAsync(ct);
+        var missing = (await db.AssetPlaybacks
+                .Where(p => p.Status == PlaybackStatus.Ready)
+                .Select(p => new { p.AssetId, p.FilePath })
+                .ToListAsync(ct))
+            .Where(p => p.FilePath is null || !File.Exists(p.FilePath))
+            .Select(p => p.AssetId)
+            .ToList();
+        if (missing.Count > 0)
+        {
+            var rows = await db.AssetPlaybacks.Where(p => missing.Contains(p.AssetId)).ToListAsync(ct);
+            foreach (var row in rows)
+            {
+                var here = Path.Combine(PlaybackRoot, $"{row.AssetId}.mp4");
+                if (File.Exists(here)) row.FilePath = here;
+                else db.AssetPlaybacks.Remove(row);
+            }
+            await db.SaveChangesAsync(ct);
+        }
 
         if (!Directory.Exists(PlaybackRoot)) return 0;
         var files = Directory.GetFiles(PlaybackRoot, "*.mp4");

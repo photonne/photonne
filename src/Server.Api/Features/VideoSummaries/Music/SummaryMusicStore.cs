@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Photonne.Server.Api.Features.VideoSummaries.Rendering;
 using Photonne.Server.Api.Shared.Data;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.VideoSummaries.Music;
 
@@ -31,7 +32,7 @@ public sealed class SummaryMusicStore
 
     public SummaryMusicStore(IConfiguration configuration, ILogger<SummaryMusicStore> logger)
     {
-        _root = Path.Combine(configuration["ThumbnailsPath"] ?? "/data/thumbnails", ".video-summaries", "music");
+        _root = Path.Combine(configuration["ThumbnailsPath"] ?? "/data/thumbnails", ThumbnailFolders.VideoSummaries, "music");
         _logger = logger;
     }
 

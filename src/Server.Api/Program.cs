@@ -173,6 +173,7 @@ var app = builder.Build();
 app.ExecuteMigrations();
 await app.InitializeAdminUserAsync();
 await app.EnsureFFmpegAsync();
+await app.MoveLegacyThumbnailFoldersAsync();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
