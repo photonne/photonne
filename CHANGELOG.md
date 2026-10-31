@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.12.0](https://github.com/photonne/photonne/compare/server-v2.11.1...server-v2.12.0) (2026-10-31)
+
+
+### Novedades
+
+* **server:** Las carpetas del servidor en el volumen de miniaturas dejan de estar ocultas ([f946b13](https://github.com/photonne/photonne/commit/f946b137113ea484a1507c3291cf9772c230ad05))
+* **server:** Las copias de vídeo respetan el espacio libre y pueden ir a otro disco ([d9f75fe](https://github.com/photonne/photonne/commit/d9f75fe3502f3050a2c8d08d8cf5d114674226d6))
+
 ## [2.11.1](https://github.com/photonne/photonne/compare/server-v2.11.0...server-v2.11.1) (2026-10-30)
 
 
