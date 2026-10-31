@@ -253,6 +253,15 @@ public static class DependencyInjection
         // In Linux/Docker, if not set, Xabe.FFmpeg will look for 'ffmpeg' in the system PATH by default
     }
 
+    /// <summary>Renames the old hidden folders in the thumbnails volume (<see cref="ThumbnailFolders"/>).</summary>
+    public static async Task MoveLegacyThumbnailFoldersAsync(this WebApplication app)
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(ThumbnailFolders));
+        await ThumbnailFolders.MoveLegacyAsync(app.Configuration["ThumbnailsPath"] ?? ThumbnailGeneratorService.DefaultThumbnailsPath, db, logger);
+    }
+
     public static async Task EnsureFFmpegAsync(this WebApplication app)
     {
         var ffmpegPath = FFmpeg.ExecutablesPath;

@@ -16,13 +16,13 @@ public sealed class VideoPlaybackStorageTests
     public void Defaults_to_the_thumbnails_disk_keeping_10_GB_free()
     {
         var storage = From(("ThumbnailsPath", "/data/thumbnails"));
-        Assert.Equal(Path.Combine("/data/thumbnails", ".playback"), storage.Root);
+        Assert.Equal(Path.Combine("/data/thumbnails", "playback"), storage.Root);
         Assert.Equal(10 * Gb, storage.MinFreeBytes);
     }
 
     [Theory]
     [InlineData("/data/playback", "/data/playback")]
-    [InlineData("  ", "/data/thumbnails/.playback")] // an empty VIDEO_PLAYBACK_PATH from the compose
+    [InlineData("  ", "/data/thumbnails/playback")] // an empty VIDEO_PLAYBACK_PATH from the compose
     public void Reads_the_path(string value, string expected)
     {
         Assert.Equal(expected, From(("ThumbnailsPath", "/data/thumbnails"), ("Video:PlaybackPath", value)).Root);

@@ -2,7 +2,7 @@ namespace Photonne.Server.Api.Shared.Services.Video;
 
 /// <summary>
 /// Where the playback copies go and how much of that disk they leave free:
-/// <c>Video:PlaybackPath</c> (default <c>{ThumbnailsPath}/.playback</c>, which
+/// <c>Video:PlaybackPath</c> (default <c>{ThumbnailsPath}/playback</c>, which
 /// is usually the fast, small disk) and <c>Video:MinFreeSpaceGb</c> (default
 /// 10; 0 turns the check off). A copy is only started when the disk keeps
 /// that much free after it, counting the copy as big as its original: an
@@ -17,7 +17,7 @@ public sealed record VideoPlaybackStorage(string Root, long MinFreeBytes)
     {
         var root = configuration["Video:PlaybackPath"] is { } path && !string.IsNullOrWhiteSpace(path)
             ? path.Trim()
-            : Path.Combine(configuration["ThumbnailsPath"] ?? "/data/thumbnails", ".playback");
+            : Path.Combine(configuration["ThumbnailsPath"] ?? "/data/thumbnails", ThumbnailFolders.Playback);
         var minFreeGb = Math.Max(0, configuration.GetValue("Video:MinFreeSpaceGb", DefaultMinFreeSpaceGb));
         return new VideoPlaybackStorage(root, minFreeGb * BytesPerGb);
     }

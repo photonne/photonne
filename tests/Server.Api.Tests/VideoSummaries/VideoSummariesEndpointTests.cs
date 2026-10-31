@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Photonne.Server.Api.Shared.Services;
 using Photonne.Server.Api.Features.VideoSummaries;
 using Photonne.Server.Api.Features.VideoSummaries.Highlights;
 using Photonne.Server.Api.Shared.Models;
@@ -335,7 +336,7 @@ public sealed class VideoSummariesEndpointTests : IntegrationTestBase
         Assert.Equal(new[] { 1.0, 2.5 }, Assert.Single(ml.Speech!));
 
         var scratch = Path.Combine(
-            withMl.Services.GetRequiredService<IConfiguration>()["ThumbnailsPath"]!, ".video-summaries");
+            withMl.Services.GetRequiredService<IConfiguration>()["ThumbnailsPath"]!, ThumbnailFolders.VideoSummaries);
         Assert.True(!Directory.Exists(scratch) || !Directory.EnumerateFileSystemEntries(scratch).Any(),
             "the frames and audio given to the ML service are removed");
 

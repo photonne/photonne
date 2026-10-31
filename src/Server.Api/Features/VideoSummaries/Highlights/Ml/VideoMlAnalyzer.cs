@@ -1,5 +1,6 @@
 using System.Globalization;
 using Photonne.Server.Api.Features.VideoSummaries.Rendering;
+using Photonne.Server.Api.Shared.Services;
 
 namespace Photonne.Server.Api.Features.VideoSummaries.Highlights;
 
@@ -38,7 +39,7 @@ public sealed class VideoMlAnalyzer
     public VideoMlAnalyzer(IVideoMlService ml, IConfiguration configuration, ILogger<VideoMlAnalyzer> logger)
     {
         _ml = ml;
-        _scratchRoot = Path.Combine(configuration["ThumbnailsPath"] ?? "/data/thumbnails", ".video-summaries");
+        _scratchRoot = Path.Combine(configuration["ThumbnailsPath"] ?? "/data/thumbnails", ThumbnailFolders.VideoSummaries);
         _logger = logger;
     }
 
