@@ -12,7 +12,7 @@
 # actually consume at runtime are generated here at build time. Doing the
 # export in a dedicated stage means torch + ultralytics never reach the
 # runtime image.
-FROM python:3.12-slim AS yolo-export
+FROM python:3.15-slim AS yolo-export
 
 ENV PIP_NO_CACHE_DIR=1 \
     PYTHONDONTWRITEBYTECODE=1
