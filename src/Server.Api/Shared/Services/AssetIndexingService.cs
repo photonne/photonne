@@ -11,19 +11,22 @@ public class AssetIndexingService
     private readonly MediaRecognitionService _mediaRecognitionService;
     private readonly SettingsService _settingsService;
     private readonly ApplicationDbContext _dbContext;
+    private readonly ILogger<AssetIndexingService> _logger;
 
     public AssetIndexingService(
         FileHashService hashService,
         IEnrichmentService enrichmentService,
         MediaRecognitionService mediaRecognitionService,
         SettingsService settingsService,
-        ApplicationDbContext dbContext)
+        ApplicationDbContext dbContext,
+        ILogger<AssetIndexingService> logger)
     {
         _hashService = hashService;
         _enrichmentService = enrichmentService;
         _mediaRecognitionService = mediaRecognitionService;
         _settingsService = settingsService;
         _dbContext = dbContext;
+        _logger = logger;
     }
 
     /// <summary>
@@ -40,7 +43,7 @@ public class AssetIndexingService
     {
         if (!File.Exists(physicalPath))
         {
-            Console.WriteLine($"[INDEX-FILE] File not found: {physicalPath}");
+            _logger.LogWarning("Indexing skipped, file not found: {Path}", physicalPath);
             return null;
         }
 
@@ -62,7 +65,7 @@ public class AssetIndexingService
 
             if (existingByPath != null && existingByPath.Thumbnails.Any())
             {
-                Console.WriteLine($"[INDEX-FILE] Already indexed: {storedPath}");
+                _logger.LogDebug("Already indexed: {Path}", storedPath);
                 // Before the enqueue: which ML tasks are missing depends on the type.
                 await CorrectTypeIfStaleAsync(existingByPath, physicalPath, ct);
                 await RefreshFileSnapshotIfChangedAsync(existingByPath, physicalPath, ct);
@@ -189,7 +192,7 @@ public class AssetIndexingService
                     {
                         var primaryAdmin = await GetPrimaryAdminIdAsync(ct);
                         asset.OwnerId = primaryAdmin;
-                        Console.WriteLine($"[INDEX-FILE] Owner '{ownerUsername}' not found, assigned to primary admin ({primaryAdmin}).");
+                        _logger.LogWarning("Owner {Username} not found for {Path}; assigned to the primary admin ({AdminId})", ownerUsername, storedPath, primaryAdmin);
                     }
                 }
                 else
@@ -219,12 +222,12 @@ public class AssetIndexingService
             else
                 await EnqueueMissingEnrichmentAsync(asset, ct);
 
-            Console.WriteLine($"[INDEX-FILE] Indexed successfully: {storedPath} (id={asset.Id})");
+            _logger.LogDebug("Indexed {Path} (id={AssetId})", storedPath, asset.Id);
             return asset;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[INDEX-FILE] Error indexing {physicalPath}: {ex.Message}");
+            _logger.LogError(ex, "Error indexing {Path}", physicalPath);
             return null;
         }
     }
@@ -240,7 +243,7 @@ public class AssetIndexingService
         var expected = MediaFileTypes.Classify(Path.GetExtension(physicalPath));
         if (asset.Type == expected) return;
 
-        Console.WriteLine($"[INDEX-FILE] Type corrected {asset.Type} -> {expected}: {asset.FullPath}");
+        _logger.LogInformation("Type corrected {OldType} -> {NewType}: {Path}", asset.Type, expected, asset.FullPath);
         asset.Type = expected;
         await _dbContext.SaveChangesAsync(ct);
     }
