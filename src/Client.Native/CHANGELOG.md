@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.7.2](https://github.com/photonne/photonne/compare/native-v2.7.1...native-v2.7.2) (2026-11-06)
+
+
+### Dependencias
+
+* **native:** bump com.android.application ([dd71c65](https://github.com/photonne/photonne/commit/dd71c65ae80a9a72b172967d3e061a427aef019c))
+
 ## [2.7.1](https://github.com/photonne/photonne/compare/native-v2.7.0...native-v2.7.1) (2026-10-29)
 
 
