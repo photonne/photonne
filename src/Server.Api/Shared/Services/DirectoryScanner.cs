@@ -2,7 +2,7 @@ using Photonne.Server.Api.Shared.Models;
 
 namespace Photonne.Server.Api.Shared.Services;
 
-public class DirectoryScanner
+public class DirectoryScanner(ILogger<DirectoryScanner> logger)
 {
     /// <summary>
     /// Recursively scans a directory and returns all media files (images and videos).
@@ -81,15 +81,6 @@ public class DirectoryScanner
                     // Verificar si está permitida (comparación case-insensitive)
                     var isAllowed = MediaFileTypes.IsSupported(normalizedExtension);
                     
-                    // Log detallado para archivos específicos
-                    if (normalizedExtension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) || 
-                        normalizedExtension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase) ||
-                        normalizedExtension.Equals(".heic", StringComparison.OrdinalIgnoreCase) || 
-                        normalizedExtension.Equals(".mov", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Console.WriteLine($"[DEBUG] File: {Path.GetFileName(filePath)}, Extension: '{extension}' (normalized: '{normalizedExtension}'), IsAllowed: {isAllowed}");
-                    }
-                    
                     if (isAllowed)
                     {
                         try
@@ -99,7 +90,7 @@ public class DirectoryScanner
                             // Verificar que el archivo existe y es accesible
                             if (!fileInfo.Exists)
                             {
-                                Console.WriteLine($"[WARNING] FileInfo says file doesn't exist: {filePath}");
+                                logger.LogWarning("FileInfo says file doesn't exist: {Path}", filePath);
                                 rejectedFiles++;
                                 continue;
                             }
@@ -124,7 +115,7 @@ public class DirectoryScanner
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"[ERROR] Error processing file {filePath}: {ex.Message}");
+                            logger.LogWarning(ex, "Error processing file {Path}", filePath);
                             rejectedFiles++;
                         }
                     }
@@ -156,19 +147,18 @@ public class DirectoryScanner
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"[WARNING] Could not catalogue unsupported file {filePath}: {ex.Message}");
+                            logger.LogWarning(ex, "Could not catalogue unsupported file {Path}", filePath);
                         }
                     }
                 }
                 
-                Console.WriteLine($"[DEBUG] DirectoryScanner summary for {directoryPath}:");
-                Console.WriteLine($"[DEBUG]   Total files found: {totalFilesFound}");
-                Console.WriteLine($"[DEBUG]   Allowed files: {allowedFilesFound}");
-                Console.WriteLine($"[DEBUG]   Rejected files: {rejectedFiles} (unsupported catalogued: {unsupported.Count})");
+                logger.LogInformation(
+                    "Scanned {Directory}: {Total} files, {Allowed} media, {Rejected} rejected ({Unsupported} unsupported catalogued)",
+                    directoryPath, totalFilesFound, allowedFilesFound, rejectedFiles, unsupported.Count);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ERROR] Error scanning directory {directoryPath}: {ex.Message}");
+                logger.LogError(ex, "Error scanning directory {Directory}", directoryPath);
             }
         }, cancellationToken);
 

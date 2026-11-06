@@ -38,6 +38,7 @@ public class ThumbnailEndpoint : IEndpoint
         [FromServices] ThumbnailGeneratorService thumbnailService,
         [FromServices] SettingsService settingsService,
         [FromServices] AssetVisibilityService visibility,
+        [FromServices] ILogger<ThumbnailEndpoint> logger,
         HttpContext httpContext,
         [FromRoute] Guid assetId,
         [FromQuery] string size = "Medium",
@@ -65,7 +66,7 @@ public class ThumbnailEndpoint : IEndpoint
         // If thumbnail doesn't exist in DB or file doesn't exist, generate it on-demand
         if (thumbnail == null || !File.Exists(thumbnail.FilePath))
         {
-            Console.WriteLine($"[THUMBNAIL] Generating thumbnail on-demand for asset {assetId}, size {size}");
+            logger.LogDebug("Generating thumbnail on demand for asset {AssetId}, size {Size}", assetId, size);
             
             // Resolve physical path of the asset
             var physicalPath = await settingsService.ResolvePhysicalPathAsync(asset.FullPath);
@@ -83,7 +84,7 @@ public class ThumbnailEndpoint : IEndpoint
             }
             catch (ThumbnailGenerationException ex)
             {
-                Console.WriteLine($"[THUMBNAILS] {ex.Message}");
+                logger.LogWarning("On-demand thumbnail failed for asset {AssetId}: {Error}", assetId, ex.Message);
                 return TypedResults.NotFound(new ApiError($"Failed to generate thumbnail for asset {assetId}", "thumbnail_generation_failed"));
             }
 

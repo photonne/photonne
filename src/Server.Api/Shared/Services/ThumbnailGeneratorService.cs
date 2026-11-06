@@ -15,6 +15,7 @@ public class ThumbnailGeneratorService
 {
     private readonly string _thumbnailsBasePath;
     private readonly SettingsService _settingsService;
+    private readonly ILogger<ThumbnailGeneratorService> _logger;
 
     public const string KeyThumbnailFormat = "TaskSettings.ThumbnailFormat";
     public const string KeyQualitySmall = "TaskSettings.ThumbnailQuality.Small";
@@ -57,9 +58,13 @@ public class ThumbnailGeneratorService
         }
     }
 
-    public ThumbnailGeneratorService(SettingsService settingsService, IConfiguration? configuration = null)
+    public ThumbnailGeneratorService(
+        SettingsService settingsService,
+        ILogger<ThumbnailGeneratorService> logger,
+        IConfiguration? configuration = null)
     {
         _settingsService = settingsService;
+        _logger = logger;
         _thumbnailsBasePath = configuration?["ThumbnailsPath"] ?? DefaultThumbnailsPath;
 
         if (!Directory.Exists(_thumbnailsBasePath))
@@ -146,18 +151,18 @@ public class ThumbnailGeneratorService
 
                     if (!File.Exists(sourceFilePath))
                     {
-                        Console.WriteLine($"[ERROR] Source video file not found: {sourceFilePath}");
+                        _logger.LogWarning("Source video file not found: {Path}", sourceFilePath);
                         return thumbnails;
                     }
 
-                    Console.WriteLine($"[INFO] Extracting frame from video: {sourceFilePath} (Extension: {extension})");
+                    _logger.LogDebug("Extracting frame from video: {Path}", sourceFilePath);
 
                     var extracted = await ExtractVideoFrameAsync(sourceFilePath, tempFramePath, assetId, cancellationToken);
 
                     if (extracted && File.Exists(tempFramePath))
                     {
-                        var frameInfo = new FileInfo(tempFramePath);
-                        Console.WriteLine($"[INFO] Frame extracted successfully, size: {frameInfo.Length} bytes, generating thumbnails for {assetId}");
+                        _logger.LogDebug("Frame extracted ({Bytes} bytes), generating thumbnails for {AssetId}",
+                            new FileInfo(tempFramePath).Length, assetId);
 
                         using var sourceImage = await Image.LoadAsync(tempFramePath, cancellationToken);
 
@@ -184,7 +189,7 @@ public class ThumbnailGeneratorService
                     }
                     else
                     {
-                        Console.WriteLine($"[ERROR] Could not extract any frame from video {sourceFilePath} for {assetId}. FFmpeg.ExecutablesPath: {FFmpeg.ExecutablesPath}");
+                        _logger.LogWarning("Could not extract any frame from video {Path} for {AssetId} (FFmpeg.ExecutablesPath: {FfmpegPath})", sourceFilePath, assetId, FFmpeg.ExecutablesPath);
                         failure ??= new InvalidOperationException(
                             $"ffmpeg no pudo extraer ningún fotograma del vídeo (ExecutablesPath: {FFmpeg.ExecutablesPath ?? "no configurado"})");
                     }
@@ -192,7 +197,7 @@ public class ThumbnailGeneratorService
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[ERROR] Video thumbnail generation failed for {sourceFilePath}: {ex.Message}");
+                    _logger.LogWarning("Video thumbnail generation failed for {Path}: {Error}", sourceFilePath, ex.Message);
                     failure ??= ex;
                 }
                 finally
@@ -208,7 +213,7 @@ public class ThumbnailGeneratorService
         catch (Exception ex)
         {
             // Return partial results if some thumbnails failed
-            Console.WriteLine($"[ERROR] Thumbnail generation failed for {sourceFilePath}: {ex.Message}");
+            _logger.LogWarning("Thumbnail generation failed for {Path}: {Error}", sourceFilePath, ex.Message);
             failure ??= ex;
         }
 
@@ -227,8 +232,8 @@ public class ThumbnailGeneratorService
             var ffmpegPath = FFmpeg.ExecutablesPath;
             if (string.IsNullOrEmpty(ffmpegPath))
             {
-                Console.WriteLine("[WARNING] FFmpeg ExecutablesPath is not set. Trying to find it in PATH.");
-                // If not set, FFmpeg might rely on PATH, but we should log it
+                // The Docker image relies on the system PATH: nothing to check.
+                _logger.LogDebug("FFmpeg ExecutablesPath is not set; relying on the system PATH");
                 return;
             }
             
@@ -241,25 +246,25 @@ public class ThumbnailGeneratorService
             
             if (!File.Exists(ffmpegFullPath))
             {
-                Console.WriteLine($"[ERROR] FFmpeg executable NOT found at: {ffmpegFullPath}");
+                _logger.LogWarning("FFmpeg executable not found at {Path}", ffmpegFullPath);
             }
             else
             {
-                Console.WriteLine($"[DEBUG] FFmpeg found at: {ffmpegFullPath}");
+                _logger.LogDebug("FFmpeg found at {Path}", ffmpegFullPath);
             }
 
             if (!File.Exists(ffprobeFullPath))
             {
-                Console.WriteLine($"[ERROR] FFprobe executable NOT found at: {ffprobeFullPath}");
+                _logger.LogWarning("FFprobe executable not found at {Path}", ffprobeFullPath);
             }
             else
             {
-                Console.WriteLine($"[DEBUG] FFprobe found at: {ffprobeFullPath}");
+                _logger.LogDebug("FFprobe found at {Path}", ffprobeFullPath);
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ERROR] Error checking FFmpeg configuration: {ex.Message}");
+            _logger.LogWarning(ex, "Error checking the FFmpeg configuration");
         }
     }
 
@@ -278,7 +283,7 @@ public class ThumbnailGeneratorService
             var ok = await TryExtractFrameAtAsync(sourceFilePath, outputPath, seconds, cancellationToken);
             if (ok && File.Exists(outputPath) && new FileInfo(outputPath).Length > 0)
             {
-                Console.WriteLine($"[DEBUG] Extracted video frame at {seconds:0.###}s for {assetId}");
+                _logger.LogDebug("Extracted video frame at {Seconds:0.###}s for {AssetId}", seconds, assetId);
                 return true;
             }
 
@@ -299,7 +304,7 @@ public class ThumbnailGeneratorService
     /// fractions so a decode failure at one point can retry elsewhere. Falls back to a fixed
     /// ladder when probing fails (e.g. ffprobe missing or an unparsable container).
     /// </summary>
-    private static async Task<IReadOnlyList<double>> ComputeSeekPointsAsync(string sourceFilePath, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<double>> ComputeSeekPointsAsync(string sourceFilePath, CancellationToken cancellationToken)
     {
         try
         {
@@ -316,7 +321,7 @@ public class ThumbnailGeneratorService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[WARNING] Could not probe video duration for {sourceFilePath}: {ex.Message}. Falling back to fixed seek ladder.");
+            _logger.LogDebug(ex, "Could not probe video duration for {Path}; falling back to a fixed seek ladder", sourceFilePath);
         }
 
         return new[] { 1.0, 0.5, 0.0 };
@@ -327,7 +332,7 @@ public class ThumbnailGeneratorService
     /// seeking with <c>-ss</c> placed before <c>-i</c>: thumbnails don't need frame-accurate
     /// seeking, and this avoids decoding the whole clip up to the offset.
     /// </summary>
-    private static async Task<bool> TryExtractFrameAtAsync(string sourceFilePath, string outputPath, double seconds, CancellationToken cancellationToken)
+    private async Task<bool> TryExtractFrameAtAsync(string sourceFilePath, string outputPath, double seconds, CancellationToken cancellationToken)
     {
         try
         {
@@ -360,7 +365,7 @@ public class ThumbnailGeneratorService
 
             if (process.ExitCode != 0)
             {
-                Console.WriteLine($"[WARNING] ffmpeg exited {process.ExitCode} extracting frame at {seconds:0.###}s from {sourceFilePath}");
+                _logger.LogDebug("ffmpeg exited {ExitCode} extracting frame at {Seconds:0.###}s from {Path}", process.ExitCode, seconds, sourceFilePath);
                 return false;
             }
 
@@ -368,7 +373,7 @@ public class ThumbnailGeneratorService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[WARNING] ffmpeg frame extraction at {seconds:0.###}s failed for {sourceFilePath}: {ex.Message}");
+            _logger.LogDebug(ex, "ffmpeg frame extraction at {Seconds:0.###}s failed for {Path}", seconds, sourceFilePath);
             return false;
         }
     }
@@ -497,7 +502,7 @@ public class ThumbnailGeneratorService
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ERROR] Thumbnail {size} failed for {assetId}: {ex.Message}");
+            _logger.LogWarning("Thumbnail {Size} failed for {AssetId}: {Error}", size, assetId, ex.Message);
             return (null, ex);
         }
     }

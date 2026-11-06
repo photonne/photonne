@@ -36,6 +36,7 @@ public class SyncAssetEndpoint : IEndpoint
         [FromServices] ExifExtractorService exifService,
         [FromServices] AssetIndexingService indexingService,
         [FromServices] ApplicationDbContext dbContext,
+        [FromServices] ILogger<SyncAssetEndpoint> logger,
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
@@ -80,11 +81,10 @@ public class SyncAssetEndpoint : IEndpoint
         if (!Directory.Exists(mobileBackupRoot))
         {
             Directory.CreateDirectory(mobileBackupRoot);
-            Console.WriteLine($"[SYNC] Created MobileBackup directory: {mobileBackupRoot}");
+            logger.LogInformation("Created MobileBackup directory: {Path}", mobileBackupRoot);
         }
 
-        Console.WriteLine($"[SYNC] Source: {path}");
-        Console.WriteLine($"[SYNC] Destination root: {mobileBackupRoot}");
+        logger.LogDebug("Sync source {Source}, destination root {Root}", path, mobileBackupRoot);
 
         var fileName = currentFileInfo.Name;
         var relativePath = Path.GetRelativePath(userConfiguredPath, path);
@@ -100,7 +100,7 @@ public class SyncAssetEndpoint : IEndpoint
         var normalizedLibraryPath = Path.GetFullPath(mobileBackupRoot);
         if (normalizedPath.StartsWith(normalizedLibraryPath, StringComparison.OrdinalIgnoreCase))
         {
-            Console.WriteLine($"[SYNC] File is already inside the destination directory: {path}");
+            logger.LogDebug("File is already inside the destination directory: {Path}", path);
             return TypedResults.Ok(new SyncAssetResponse(
                 "File is already in the destination directory",
                 null,
@@ -120,7 +120,7 @@ public class SyncAssetEndpoint : IEndpoint
             var existingPhysicalPath = await settingsService.ResolvePhysicalPathAsync(existingAsset.FullPath);
             if (!string.IsNullOrEmpty(existingPhysicalPath) && File.Exists(existingPhysicalPath))
             {
-                Console.WriteLine($"[SYNC] Asset with same checksum already exists: {existingPhysicalPath}");
+                logger.LogDebug("Asset with same checksum already exists: {Path}", existingPhysicalPath);
                 return TypedResults.Ok(new SyncAssetResponse(
                     "Asset already exists (same content)",
                     existingAsset.Id,
@@ -138,13 +138,13 @@ public class SyncAssetEndpoint : IEndpoint
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[SYNC] Warning: could not hash existing file {targetPath}: {ex.Message}");
+                logger.LogWarning(ex, "Could not hash existing file {Path}", targetPath);
                 existingChecksum = string.Empty;
             }
 
             if (existingChecksum == sourceChecksum)
             {
-                Console.WriteLine($"[SYNC] File with same name and checksum already at destination: {targetPath}");
+                logger.LogDebug("File with same name and checksum already at destination: {Path}", targetPath);
                 return TypedResults.Ok(new SyncAssetResponse(
                     "Asset already exists at destination",
                     null,
@@ -169,10 +169,10 @@ public class SyncAssetEndpoint : IEndpoint
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[SYNC] Warning: could not extract EXIF from {path}: {ex.Message}");
+            logger.LogWarning(ex, "Could not extract EXIF from {Path}", path);
         }
 
-        Console.WriteLine($"[SYNC] Copying {path} → {targetPath}");
+        logger.LogDebug("Copying {Source} -> {Target}", path, targetPath);
         File.Copy(path, targetPath, overwrite: false);
 
         if (!File.Exists(targetPath))
@@ -189,8 +189,8 @@ public class SyncAssetEndpoint : IEndpoint
         var targetChecksum = await hashService.CalculateFileHashAsync(targetPath, cancellationToken);
         if (!string.Equals(targetChecksum, sourceChecksum, StringComparison.OrdinalIgnoreCase))
         {
-            Console.WriteLine(
-                $"[SYNC ERROR] Checksum mismatch after copy: source={sourceChecksum} target={targetChecksum} path={targetPath}");
+            logger.LogError("Checksum mismatch after copy: source={SourceChecksum} target={TargetChecksum} path={Path}",
+                sourceChecksum, targetChecksum, targetPath);
             try { File.Delete(targetPath); } catch { /* best-effort cleanup */ }
             return TypedResults.Json(
                 new ApiError("Checksum mismatch between source and destination after copy.", "checksum_mismatch"),
