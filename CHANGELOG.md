@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.12.1](https://github.com/photonne/photonne/compare/server-v2.12.0...server-v2.12.1) (2026-11-06)
+
+
+### Correcciones
+
+* **server:** El log del contenedor deja de crecer sin límite ([2ac14bc](https://github.com/photonne/photonne/commit/2ac14bc1f68deb7da8afc300520ffd27094641ed))
+* **server:** Los mensajes por fichero pasan a ILogger en nivel Debug ([abf3a60](https://github.com/photonne/photonne/commit/abf3a603c0ee787a6383ae86f9cf5bec0f79b6fc))
+
+
+### Dependencias
+
+* **server:** Bump the nuget-minor group with 1 update ([6132a27](https://github.com/photonne/photonne/commit/6132a2724ddcb4cd6fc99041abe50304c22ec513))
+* **spa:** bump the npm-minor group in /src/Client.SPA with 5 updates ([e946d72](https://github.com/photonne/photonne/commit/e946d7244ef9db3dd2da315d6317906a3f6df126))
+
 ## [2.12.0](https://github.com/photonne/photonne/compare/server-v2.11.1...server-v2.12.0) (2026-10-31)
 
 
