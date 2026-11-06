@@ -1,3 +1,12 @@
+# Docker keeps each container's output in a log file that, with its default
+# json-file driver, grows without limit. The local driver rotates it: at most
+# 5 files of 20 MB per container, compressed.
+x-logging: &default-logging
+  driver: local
+  options:
+    max-size: "20m"
+    max-file: "5"
+
 services:
   photonne-api:
     image: ghcr.io/photonne/photonne:latest
@@ -67,6 +76,7 @@ services:
       photonne-ml:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
 
   photonne-ml:
     image: ghcr.io/photonne/photonne-ml:latest
@@ -101,6 +111,7 @@ services:
       - ${THUMBNAILS_HOST_PATH:-./data/thumbnails}:/data/thumbnails:ro
       - ml_models:/app/models
     restart: unless-stopped
+    logging: *default-logging
 
   postgresql:
     # pg17 by default. Moving an existing database to pg18 takes a dump and
@@ -133,6 +144,7 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    logging: *default-logging
 
   # Solo para depurar la base de datos: no arranca con `docker compose up`.
   # Actívalo con `docker compose --profile pgadmin up -d`. Escucha solo en
@@ -154,6 +166,7 @@ services:
       postgresql:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
 
 volumes:
   postgresql_data:
