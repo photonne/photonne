@@ -77,6 +77,11 @@ updates:
       # ver Dockerfile.gpu) sin aportar nada (#144). Solo pasan los parches 12.8.x.
       - dependency-name: nvidia/cuda
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # Python también se sube a mano: una versión nueva tarda meses en tener
+      # ruedas de onnxruntime, torch e insightface, y sin ellas la imagen ML no
+      # se construye (3.15 rompió la de 1.201.2: onnxruntime no tenía rueda).
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: docker-compose
     directory: /
