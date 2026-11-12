@@ -363,42 +363,23 @@ public class FaceClusteringService
         if (orphans.Count > knnSwitchoverThreshold)
         {
             // pgvector kNN path: for each orphan, ask Postgres for its top-k
-            // nearest orphan neighbors (visible to U, no assignment yet) using
-            // the HNSW index on Faces.Embedding, and add edges below the
-            // cosine threshold to the union-find. Keeps batch runtime bounded
-            // on large catalogs — provided the index exists. It didn't until
-            // migration AddVectorIndexes: this comment described it for a year
-            // while every one of these queries scanned the whole table.
+            // nearest orphan neighbors using the HNSW index on Faces.Embedding,
+            // and add edges below the cosine threshold to the union-find. Keeps
+            // batch runtime bounded on large catalogs — provided the index
+            // exists. It didn't until migration AddVectorIndexes: this comment
+            // described it for a year while every one of these queries scanned
+            // the whole table.
             var idToIndex = new Dictionary<Guid, int>(orphans.Count);
             for (int i = 0; i < orphans.Count; i++) idToIndex[orphans[i].Id] = i;
 
-            var k = knnNeighbors;
-            for (int i = 0; i < orphans.Count; i++)
+            await ForEachOrphanNeighborsAsync(orphans, knnNeighbors, (i, neighbors) =>
             {
-                var face = orphans[i];
-                var embedding = face.Embedding;
-
-                var neighbors = await _dbContext.Faces.AsNoTracking()
-                    .Where(f => f.Asset.DeletedAt == null && !f.Asset.IsFileMissing)
-                    .Where(f =>
-                        f.Asset.OwnerId == userId
-                        || (f.Asset.FolderId.HasValue && folderIds.Contains(f.Asset.FolderId.Value))
-                        || (f.Asset.ExternalLibraryId.HasValue && libIds.Contains(f.Asset.ExternalLibraryId.Value))
-                        || albumIds.Contains(f.Asset.Id))
-                    .Where(f => !_dbContext.UserFaceAssignments.Any(uf =>
-                        uf.FaceId == f.Id && uf.UserId == userId))
-                    .Where(f => f.Id != face.Id)
-                    .OrderBy(f => f.Embedding.CosineDistance(embedding))
-                    .Take(k)
-                    .Select(f => new { f.Id, Distance = f.Embedding.CosineDistance(embedding) })
-                    .ToListAsync(cancellationToken);
-
                 foreach (var n in neighbors)
                 {
                     if (n.Distance >= threshold) break;
                     if (idToIndex.TryGetValue(n.Id, out var j)) Union(i, j);
                 }
-            }
+            }, cancellationToken);
         }
         else
         {
@@ -478,6 +459,80 @@ public class FaceClusteringService
 
         return personsCreated;
     }
+
+    private const string OrphanTable = "face_cluster_orphans";
+
+    /// <summary>
+    /// Runs the kNN query of every orphan against the other orphans and hands
+    /// each result, nearest first, to <paramref name="onNeighbors"/>.
+    ///
+    /// The candidates are exactly the orphans already loaded: visible to the
+    /// user and without an assignment. That filter used to be repeated in each
+    /// of the n queries, and it carries one parameter per asset the user sees
+    /// through a shared album — thousands of them, n times over, every night;
+    /// logged in full, those queries filled hundreds of GB of container log.
+    /// Their ids go once into a temporary table instead, so each query is the
+    /// HNSW walk and a lookup in it. The table lives on this connection, which
+    /// stays open for the pass, and is dropped at the end.
+    /// </summary>
+    private async Task ForEachOrphanNeighborsAsync(
+        IReadOnlyList<Face> orphans,
+        int k,
+        Action<int, List<OrphanNeighbor>> onNeighbors,
+        CancellationToken cancellationToken)
+    {
+        var database = _dbContext.Database;
+        await database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            await database.ExecuteSqlRawAsync(
+                $"""CREATE TEMP TABLE IF NOT EXISTS {OrphanTable} ("Id" uuid PRIMARY KEY)""", cancellationToken);
+            await database.ExecuteSqlRawAsync($"TRUNCATE {OrphanTable}", cancellationToken);
+            var orphanIds = orphans.Select(f => f.Id).ToArray();
+            await database.ExecuteSqlRawAsync(
+                $"""INSERT INTO {OrphanTable} ("Id") SELECT unnest(@ids)""",
+                [new Npgsql.NpgsqlParameter<Guid[]>("ids", orphanIds)],
+                cancellationToken);
+            await database.ExecuteSqlRawAsync($"ANALYZE {OrphanTable}", cancellationToken);
+
+            for (var i = 0; i < orphans.Count; i++)
+            {
+                var face = orphans[i];
+                var neighbors = await database.SqlQueryRaw<OrphanNeighbor>(
+                    $"""
+                    SELECT f."Id", f."Embedding" <=> @embedding AS "Distance"
+                    FROM "Faces" AS f
+                    WHERE f."Id" <> @faceId
+                      AND EXISTS (SELECT 1 FROM {OrphanTable} AS o WHERE o."Id" = f."Id")
+                    ORDER BY f."Embedding" <=> @embedding
+                    LIMIT @k
+                    """,
+                    new Npgsql.NpgsqlParameter("embedding", face.Embedding),
+                    new Npgsql.NpgsqlParameter<Guid>("faceId", face.Id),
+                    new Npgsql.NpgsqlParameter<int>("k", k))
+                    .ToListAsync(cancellationToken);
+                onNeighbors(i, neighbors);
+            }
+        }
+        finally
+        {
+            // Not cancellable: the connection may go back to the pool, and the
+            // table must not travel with it. A connection that broke took the
+            // table with it; that error must not hide the one that broke it.
+            try
+            {
+                await database.ExecuteSqlRawAsync($"DROP TABLE IF EXISTS {OrphanTable}", CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Could not drop {Table}", OrphanTable);
+            }
+            await database.CloseConnectionAsync();
+        }
+    }
+
+    // Keyless row of the kNN query; property names match its column aliases.
+    private sealed record OrphanNeighbor(Guid Id, double Distance);
 
     /// <summary>
     /// Explicit "do everything now" path bound to user actions like the
