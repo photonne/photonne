@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.201.2](https://github.com/photonne/photonne/compare/ml-v1.201.1...ml-v1.201.2) (2026-11-12)
+
+
+### Dependencias
+
+* **docker:** bump python from 3.12-slim to 3.15-slim in /src/Server.Ml ([6bef495](https://github.com/photonne/photonne/commit/6bef495fd771875e18060fd765af863c72c61cb4))
+* **ml:** Vuelve a Python 3.12 en la imagen ML ([8004ccc](https://github.com/photonne/photonne/commit/8004ccc149dac40fa0abff0570ba65958dfd95c8))
+
 ## [1.201.1](https://github.com/photonne/photonne/compare/ml-v1.201.0...ml-v1.201.1) (2026-10-28)
 
 

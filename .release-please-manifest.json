@@ -1,5 +1,5 @@
 {
   ".": "2.12.1",
-  "src/Server.Ml": "1.201.1",
+  "src/Server.Ml": "1.201.2",
   "src/Client.Native": "2.7.1"
 }
