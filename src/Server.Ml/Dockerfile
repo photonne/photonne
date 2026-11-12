@@ -3,7 +3,7 @@
 # actually consume at runtime are generated here at build time. Doing the
 # export in a dedicated stage means torch + ultralytics never reach the
 # runtime image.
-FROM python:3.15-slim AS yolo-export
+FROM python:3.12-slim AS yolo-export
 
 ENV PIP_NO_CACHE_DIR=1 \
     PYTHONDONTWRITEBYTECODE=1
@@ -78,7 +78,7 @@ RUN echo "[build] /export bake status:" \
 
 
 # ─── Stage 2: runtime ─────────────────────────────────────────────────────────
-FROM python:3.15-slim
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
