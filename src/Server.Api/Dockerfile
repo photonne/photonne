@@ -76,7 +76,7 @@ RUN npm ci --ignore-scripts
 COPY src/Client.SPA/ ./
 RUN npm run prepare && npm run build
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS publish
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["src/Server.Api/Server.Api.csproj", "src/Server.Api/"]
