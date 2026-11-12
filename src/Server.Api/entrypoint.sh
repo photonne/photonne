@@ -1,5 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 # Photonne API entrypoint.
+#
+# bash, not sh: the image's /bin/sh is dash, which drops every environment
+# variable whose name is not a valid shell identifier before exec'ing the
+# server. .NET configuration keys carry dots
+# (Logging__LogLevel__Microsoft.EntityFrameworkCore=Warning), so under dash
+# those overrides never reached the server. bash passes them through.
 #
 # Self-hosted volumes routinely arrive owned by whatever uid the NAS or a
 # previous deployment used, which makes the in-container `app` user unable
