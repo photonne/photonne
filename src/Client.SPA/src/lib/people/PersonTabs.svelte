@@ -10,6 +10,7 @@
 	import { m } from '#lib/paraglide/messages.js';
 	import { icons } from './icons.js';
 	import PersonAvatar from './PersonAvatar.svelte';
+	import { relationshipText } from './relationship.js';
 
 	/**
 	 * Under the person's name, on each of their pages: the face as a hero, what
@@ -18,6 +19,7 @@
 	let { person, current }: { person: PersonDto; current: PersonTab } = $props();
 
 	const pending = $derived(person.pendingSuggestionsCount);
+	const relationship = $derived(relationshipText(person));
 
 	const tabs = $derived([
 		{
@@ -43,6 +45,9 @@
 	<PersonAvatar faceId={person.coverFaceId} name={person.name} size="96px" />
 	<div class="facts">
 		<span class="faces">{m.people_faces({ count: person.faceCount })}</span>
+		{#if relationship}
+			<span class="chip fact">{relationship}</span>
+		{/if}
 		{#if pending}
 			<span class="chip fact pending">{m.people_pending_badge({ count: pending })}</span>
 		{/if}

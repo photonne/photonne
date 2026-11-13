@@ -8,6 +8,7 @@ const PEOPLE_QUERIES = [
 	'getApiPeopleById',
 	'getApiPeopleByIdFaces',
 	'getApiPeopleByIdSuggestions',
+	'getApiPeopleConstellation',
 	'getApiAssetsByIdFaces'
 ];
 

@@ -170,6 +170,39 @@ test('a person page shows their photos, renames and removes photos from them', a
 	await expect(page.getByRole('dialog', { name: /^IMG_/ })).toBeVisible();
 });
 
+test('a person page says who they are to you: category, label, and none again', async ({
+	page
+}) => {
+	const api = await fakeApi(page, { signedIn: true });
+	await page.goto('/people/person-ana');
+	await expect(page.getByRole('heading', { name: 'Ana', level: 1 })).toBeVisible();
+
+	await page.getByRole('button', { name: 'Relación' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Relación con Ana' });
+	await dialog.getByRole('button', { name: 'Familia' }).click();
+	await dialog.getByLabel('Parentesco o detalle').fill('Madre');
+	await dialog.getByRole('button', { name: 'Guardar' }).click();
+
+	await expect(page.getByText('Relación guardada')).toBeVisible();
+	await expect(page.getByText('Familia · Madre')).toBeVisible();
+	expect(peopleState(api.state).people[0]).toMatchObject({
+		relationshipCategory: 'family',
+		relationshipLabel: 'Madre'
+	});
+
+	// Pressing the chosen category again leaves the person unclassified.
+	await page.getByRole('button', { name: 'Relación' }).click();
+	await expect(dialog.getByRole('button', { name: 'Familia' })).toHaveAttribute(
+		'aria-pressed',
+		'true'
+	);
+	await dialog.getByRole('button', { name: 'Familia' }).click();
+	await dialog.getByRole('button', { name: 'Guardar' }).click();
+	await expect(page.getByText('Relación quitada')).toBeVisible();
+	await expect(page.getByText('Familia · Madre')).toBeHidden();
+	expect(peopleState(api.state).people[0].relationshipCategory).toBeNull();
+});
+
 test('merges a person with another from their page and lands on the kept one', async ({ page }) => {
 	await fakeApi(page, { signedIn: true });
 	await page.goto('/people/person-x1');

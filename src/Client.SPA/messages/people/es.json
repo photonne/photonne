@@ -344,5 +344,27 @@
 				"p=other": "Hay {n} caras que podrían ser de alguien que ya conoces."
 			}
 		}
-	]
+	],
+	"people_action_relationship": "Relación",
+	"people_relationship_title": "Relación con {name}",
+	"people_relationship_category": "Qué es para ti",
+	"people_relationship_label": "Parentesco o detalle",
+	"people_relationship_label_hint": "Opcional. Por ejemplo: Madre, Primo, Amiga del instituto.",
+	"people_relationship_none_hint": "Sin categoría, esta persona aparece sin clasificar.",
+	"people_relationship_saved": "Relación guardada",
+	"people_relationship_removed": "Relación quitada",
+	"people_relationship_none": "Sin clasificar",
+	"people_relationship_family": "Familia",
+	"people_relationship_partner": "Pareja",
+	"people_relationship_children": "Hijos",
+	"people_relationship_friends": "Amistades",
+	"people_relationship_work": "Trabajo",
+	"people_relationship_pet": "Mascota",
+	"people_relationship_other": "Otros",
+	"people_relationship_suggest_family": "Madre|Padre|Hermana|Hermano|Abuela|Abuelo|Tía|Tío|Prima|Primo|Sobrina|Sobrino",
+	"people_relationship_suggest_partner": "Pareja|Mujer|Marido|Expareja",
+	"people_relationship_suggest_children": "Hija|Hijo",
+	"people_relationship_suggest_friends": "Amiga|Amigo|Amiga de la infancia|Amigo de la infancia",
+	"people_relationship_suggest_work": "Compañera|Compañero|Jefa|Jefe",
+	"people_relationship_suggest_pet": "Perra|Perro|Gata|Gato"
 }

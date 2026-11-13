@@ -10,13 +10,15 @@
 	import { icons } from './icons.js';
 	import MergeDialog from './MergeDialog.svelte';
 	import PersonPickerDialog from './PersonPickerDialog.svelte';
+	import RelationshipDialog from './RelationshipDialog.svelte';
 	import RenameDialog from './RenameDialog.svelte';
 
-	/** Rename, merge and hide for a person's own pages. */
+	/** Rename, relationship, merge and hide for a person's own pages. */
 	let { person }: { person: PersonDto } = $props();
 
 	const queryClient = useQueryClient();
 	let renaming = $state<PersonDto | null>(null);
+	let relating = $state<PersonDto | null>(null);
 	let picking = $state(false);
 	let merging = $state<PersonDto[] | null>(null);
 	let busy = $state(false);
@@ -50,6 +52,15 @@
 <button
 	type="button"
 	class="icon-btn"
+	title={m.people_action_relationship()}
+	aria-label={m.people_action_relationship()}
+	onclick={() => (relating = person)}
+>
+	<Icon path={icons.group} />
+</button>
+<button
+	type="button"
+	class="icon-btn"
 	title={m.people_action_merge_with()}
 	aria-label={m.people_action_merge_with()}
 	onclick={() => (picking = true)}
@@ -72,6 +83,7 @@
 	onclose={() => (renaming = null)}
 	onmerged={(target) => goto(appHref(`/people/${target.id}`), { replaceState: true })}
 />
+<RelationshipDialog person={relating} onclose={() => (relating = null)} />
 <PersonPickerDialog
 	open={picking}
 	title={m.people_action_merge_with()}
