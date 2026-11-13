@@ -419,5 +419,15 @@
 	],
 	"people_constellation_empty": "No stars yet",
 	"people_constellation_empty_hint": "Name the people in your photos and they will appear here.",
-	"people_constellation_error": "The constellation could not be loaded"
+	"people_constellation_error": "The constellation could not be loaded",
+	"people_branch_label": "Born from the trail of",
+	"people_branch_none": "No one: appears on their own",
+	"people_branch_none_children": "No one: born from your line",
+	"people_branch_choose": "Choose a person…",
+	"people_branch_change": "Change",
+	"people_branch_remove": "Remove",
+	"people_branch_hint": "In the constellation, their trail will come out of that person's: the niece, from the sister.",
+	"people_branch_cycle": "Not possible: that person is already born from this one's trail.",
+	"people_constellation_born_from": "Born from {name}",
+	"people_constellation_born_from_you": "Born from your line"
 }

@@ -401,10 +401,17 @@
 				<div
 					class="tip"
 					style:left="{Math.max(bleed.left + 8, Math.min(hover.x + 14, width - 236))}px"
-					style:top="{Math.max(padTop, Math.min(hover.y + 14, height - padBottom - 90))}px"
+					style:top="{Math.max(padTop, Math.min(hover.y + 14, height - padBottom - 108))}px"
 				>
 					<strong>{star.name}</strong>
 					<span>{relation(star)}</span>
+					{#if star.origin}
+						<span>
+							{star.origin === 'you'
+								? m.people_constellation_born_from_you()
+								: m.people_constellation_born_from({ name: star.origin.name })}
+						</span>
+					{/if}
 					<span>{m.people_constellation_first({ year: Math.floor(star.start) })}</span>
 					<span>
 						{star.status === 'fixed' && now >= star.end
