@@ -25,6 +25,8 @@ interface Person {
 	name: string | null;
 	coverFaceId: string | null;
 	isHidden: boolean;
+	relationshipCategory: string | null;
+	relationshipLabel: string | null;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -49,9 +51,10 @@ const seed: {
 	faces: number;
 	suggestions: number;
 	hidden?: boolean;
+	relationship?: [category: string, label: string | null];
 }[] = [
 	{ id: 'person-ana', name: 'Ana', faces: 14, suggestions: 3 },
-	{ id: 'person-luis', name: 'Luis', faces: 9, suggestions: 0 },
+	{ id: 'person-luis', name: 'Luis', faces: 9, suggestions: 0, relationship: ['friends', null] },
 	{ id: 'person-x1', name: null, faces: 6, suggestions: 0 },
 	{ id: 'person-marta', name: 'Marta', faces: 4, suggestions: 1, hidden: true },
 	{ id: 'person-x2', name: null, faces: 3, suggestions: 0 },
@@ -77,6 +80,8 @@ function initial(): PeopleState {
 			name: entry.name,
 			coverFaceId: `face-${entry.id.slice(7)}-0`,
 			isHidden: entry.hidden ?? false,
+			relationshipCategory: entry.relationship?.[0] ?? null,
+			relationshipLabel: entry.relationship?.[1] ?? null,
 			createdAt: '2026-01-01T00:00:00Z',
 			updatedAt: '2026-01-01T00:00:00Z'
 		});
@@ -369,6 +374,12 @@ const handle: FakeHandler = async ({ method, path, request, authorized, json, ro
 			person.name = name?.trim() || null;
 			return ok();
 		}
+	}
+	if (method === 'PUT' && parts[2] === 'relationship') {
+		const body = request.postDataJSON() as { category: string | null; label?: string | null };
+		person.relationshipCategory = body.category;
+		person.relationshipLabel = body.category ? body.label?.trim() || null : null;
+		return ok();
 	}
 	if (method === 'POST' && parts[2] === 'hide') {
 		person.isHidden = true;

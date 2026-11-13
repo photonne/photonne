@@ -344,5 +344,27 @@
 				"p=other": "{n} faces could belong to someone you already know."
 			}
 		}
-	]
+	],
+	"people_action_relationship": "Relationship",
+	"people_relationship_title": "Relationship with {name}",
+	"people_relationship_category": "Who they are to you",
+	"people_relationship_label": "Kinship or detail",
+	"people_relationship_label_hint": "Optional. For example: Mother, Cousin, School friend.",
+	"people_relationship_none_hint": "Without a category, this person shows as unclassified.",
+	"people_relationship_saved": "Relationship saved",
+	"people_relationship_removed": "Relationship removed",
+	"people_relationship_none": "Unclassified",
+	"people_relationship_family": "Family",
+	"people_relationship_partner": "Partner",
+	"people_relationship_children": "Children",
+	"people_relationship_friends": "Friends",
+	"people_relationship_work": "Work",
+	"people_relationship_pet": "Pet",
+	"people_relationship_other": "Other",
+	"people_relationship_suggest_family": "Mother|Father|Sister|Brother|Grandmother|Grandfather|Aunt|Uncle|Cousin|Niece|Nephew",
+	"people_relationship_suggest_partner": "Partner|Wife|Husband|Ex-partner",
+	"people_relationship_suggest_children": "Daughter|Son",
+	"people_relationship_suggest_friends": "Friend|Childhood friend",
+	"people_relationship_suggest_work": "Colleague|Manager",
+	"people_relationship_suggest_pet": "Dog|Cat"
 }
