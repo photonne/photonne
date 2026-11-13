@@ -802,6 +802,25 @@ public class FaceClusteringService
             target.RelationshipLabel = source.RelationshipLabel;
         }
 
+        // Las ramas también: quien nacía de la que desaparece pasa a nacer de la
+        // que queda, y esta hereda de quién nacía aquella si no cierra un ciclo.
+        var branches = await _dbContext.People
+            .Where(p => p.OwnerId == userId && p.BranchFromPersonId != null)
+            .ToDictionaryAsync(p => p.Id, p => p.BranchFromPersonId!.Value, cancellationToken);
+        if (target.BranchFromPersonId == source.Id) target.BranchFromPersonId = null;
+        if (target.BranchFromPersonId == null
+            && source.BranchFromPersonId is Guid inherited
+            && !PersonBranches.Reaches(branches, from: inherited, to: target.Id))
+        {
+            target.BranchFromPersonId = inherited;
+        }
+        // Como entidades cargadas y no con ExecuteUpdate: si alguna ya lo estaba,
+        // al borrar la que desaparece EF le pondría la rama a null con su copia vieja.
+        var born = await _dbContext.People
+            .Where(p => p.OwnerId == userId && p.BranchFromPersonId == sourcePersonId && p.Id != targetPersonId)
+            .ToListAsync(cancellationToken);
+        foreach (var person in born) person.BranchFromPersonId = target.Id;
+
         // Clear source's CoverFace FK to avoid blocking the delete via SetNull cascade.
         source.CoverFaceId = null;
         await _dbContext.SaveChangesAsync(cancellationToken);

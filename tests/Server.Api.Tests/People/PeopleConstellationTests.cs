@@ -14,9 +14,11 @@ public sealed class PeopleConstellationTests : IntegrationTestBase
     private sealed record YearDto(int Year, int AssetCount);
     private sealed record StarDto(
         Guid Id, string Name, string? RelationshipCategory, string? RelationshipLabel,
-        DateTime FirstCapturedAt, DateTime LastCapturedAt, int AssetCount, List<YearDto> Years);
+        DateTime FirstCapturedAt, DateTime LastCapturedAt, int AssetCount, List<YearDto> Years,
+        Guid? BranchFromPersonId);
     private sealed record Constellation(List<StarDto> People);
-    private sealed record PersonBody(Guid Id, string? Name, string? RelationshipCategory, string? RelationshipLabel);
+    private sealed record PersonBody(
+        Guid Id, string? Name, string? RelationshipCategory, string? RelationshipLabel, Guid? BranchFromPersonId);
     private sealed record ErrorBody(string Error, string Code);
 
     private Task<Person> PersonAsync(TestUser owner, string? name, bool hidden = false) =>
@@ -180,5 +182,107 @@ public sealed class PeopleConstellationTests : IntegrationTestBase
         Assert.Equal("partner", star.RelationshipCategory);
         Assert.Equal("Pareja", star.RelationshipLabel);
         Assert.Equal(2, star.AssetCount);
+    }
+
+    private static Task<HttpResponseMessage> BranchAsync(HttpClient client, Person person, Person? from) =>
+        client.PutAsJsonAsync($"/api/people/{person.Id}/branch", new { personId = from?.Id });
+
+    [Fact]
+    public async Task Branch_SaysWhoseTrailAPersonIsBornFrom_AndCanBeRemoved()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var sister = await PersonAsync(alice, "Laia");
+        var niece = await PersonAsync(alice, "Ona");
+        await PhotoAsync(alice, sister, Day(2000, 1, 1));
+        await PhotoAsync(alice, niece, Day(2018, 1, 1));
+
+        Assert.Equal(HttpStatusCode.NoContent, (await BranchAsync(client, niece, sister)).StatusCode);
+
+        var person = await client.GetFromJsonAsync<PersonBody>($"/api/people/{niece.Id}");
+        Assert.Equal(sister.Id, person!.BranchFromPersonId);
+        var stars = (await client.GetFromJsonAsync<Constellation>("/api/people/constellation"))!.People;
+        Assert.Equal(sister.Id, stars.Single(s => s.Id == niece.Id).BranchFromPersonId);
+        Assert.Null(stars.Single(s => s.Id == sister.Id).BranchFromPersonId);
+
+        (await BranchAsync(client, niece, null)).EnsureSuccessStatusCode();
+        person = await client.GetFromJsonAsync<PersonBody>($"/api/people/{niece.Id}");
+        Assert.Null(person!.BranchFromPersonId);
+    }
+
+    [Fact]
+    public async Task Branch_RejectsItself_Cycles_AndPeopleOfSomeoneElse()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var (bob, bobClient) = await CreateAuthenticatedUserAsync();
+        var mother = await PersonAsync(alice, "Mamá");
+        var sister = await PersonAsync(alice, "Laia");
+        var niece = await PersonAsync(alice, "Ona");
+        var bobs = await PersonAsync(bob, "Otro");
+        (await BranchAsync(client, sister, mother)).EnsureSuccessStatusCode();
+        (await BranchAsync(client, niece, sister)).EnsureSuccessStatusCode();
+
+        async Task AssertRejectedAsync(Person person, Person from, string code)
+        {
+            var response = await BranchAsync(client, person, from);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Equal(code, (await response.Content.ReadFromJsonAsync<ErrorBody>())!.Code);
+        }
+
+        await AssertRejectedAsync(niece, niece, "branch_same_person");
+        await AssertRejectedAsync(mother, niece, "branch_cycle");
+        await AssertRejectedAsync(mother, bobs, "branch_person_not_found");
+        Assert.Equal(HttpStatusCode.NotFound, (await BranchAsync(bobClient, niece, bobs)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Merge_MovesTheBranchesToThePersonThatStays()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var mother = await PersonAsync(alice, "Mamá");
+        var keep = await PersonAsync(alice, "Laia");
+        var gone = await PersonAsync(alice, "Laia (duplicada)");
+        var niece = await PersonAsync(alice, "Ona");
+        (await BranchAsync(client, gone, mother)).EnsureSuccessStatusCode();
+        (await BranchAsync(client, niece, gone)).EnsureSuccessStatusCode();
+
+        (await client.PostAsync($"/api/people/{keep.Id}/merge/{gone.Id}", null)).EnsureSuccessStatusCode();
+
+        var kept = await client.GetFromJsonAsync<PersonBody>($"/api/people/{keep.Id}");
+        Assert.Equal(mother.Id, kept!.BranchFromPersonId);
+        var child = await client.GetFromJsonAsync<PersonBody>($"/api/people/{niece.Id}");
+        Assert.Equal(keep.Id, child!.BranchFromPersonId);
+    }
+
+    [Fact]
+    public async Task Merge_NeverLeavesAPersonBranchingFromItself()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var keep = await PersonAsync(alice, "Laia");
+        var gone = await PersonAsync(alice, "Ona");
+        // La que queda nacía de la que desaparece.
+        (await BranchAsync(client, keep, gone)).EnsureSuccessStatusCode();
+
+        (await client.PostAsync($"/api/people/{keep.Id}/merge/{gone.Id}", null)).EnsureSuccessStatusCode();
+
+        var kept = await client.GetFromJsonAsync<PersonBody>($"/api/people/{keep.Id}");
+        Assert.Null(kept!.BranchFromPersonId);
+    }
+
+    [Fact]
+    public async Task DeletingThePersonABranchComesFrom_LeavesTheOtherOnItsOwn()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var sister = await PersonAsync(alice, "Laia");
+        var niece = await PersonAsync(alice, "Ona");
+        (await BranchAsync(client, niece, sister)).EnsureSuccessStatusCode();
+
+        await WithDbContextAsync(async db =>
+        {
+            db.People.Remove(await db.People.FindAsync(sister.Id) ?? throw new InvalidOperationException());
+            await db.SaveChangesAsync();
+        });
+
+        var person = await client.GetFromJsonAsync<PersonBody>($"/api/people/{niece.Id}");
+        Assert.Null(person!.BranchFromPersonId);
     }
 }
