@@ -366,5 +366,58 @@
 	"people_relationship_suggest_children": "Hija|Hijo",
 	"people_relationship_suggest_friends": "Amiga|Amigo|Amiga de la infancia|Amigo de la infancia",
 	"people_relationship_suggest_work": "Compañera|Compañero|Jefa|Jefe",
-	"people_relationship_suggest_pet": "Perra|Perro|Gata|Gato"
+	"people_relationship_suggest_pet": "Perra|Perro|Gata|Gato",
+	"people_constellation": "Constelación",
+	"people_constellation_subtitle": "Cada persona es una estrella: nace con su primera foto y se queda fija donde está la última.",
+	"people_constellation_you": "Tú",
+	"people_constellation_count": "Contigo: {alive} · Fijas: {fixed}",
+	"people_constellation_play": "Reproducir",
+	"people_constellation_pause": "Pausar",
+	"people_constellation_restart": "Reiniciar",
+	"people_constellation_year": "Año",
+	"people_constellation_speed": "Velocidad",
+	"people_constellation_speed_slow": "Lenta",
+	"people_constellation_speed_normal": "Normal",
+	"people_constellation_speed_fast": "Rápida",
+	"people_constellation_view": "Vista",
+	"people_constellation_view_all": "Toda la vida",
+	"people_constellation_view_follow": "Seguir el presente",
+	"people_constellation_legend": "Mostrar u ocultar por relación",
+	"people_constellation_list": "Personas de la constelación",
+	"people_constellation_first": "Primera foto: {year}",
+	"people_constellation_last": "Última foto: {year}",
+	"people_constellation_ongoing": "Sigue apareciendo",
+	"people_constellation_photos": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{countFormatted} foto",
+				"countPlural=other": "{countFormatted} fotos"
+			}
+		}
+	],
+	"people_constellation_star_fixed": "{name}, {relation}: de {from} a {to}",
+	"people_constellation_star_alive": "{name}, {relation}: desde {from}",
+	"people_constellation_unclassified": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{countFormatted} persona sin clasificar: dale una relación desde su ficha.",
+				"countPlural=other": "{countFormatted} personas sin clasificar: dales una relación desde su ficha."
+			}
+		}
+	],
+	"people_constellation_empty": "Aún no hay estrellas",
+	"people_constellation_empty_hint": "Pon nombre a las personas de tus fotos y aparecerán aquí.",
+	"people_constellation_error": "No se ha podido cargar la constelación"
 }

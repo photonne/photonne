@@ -191,6 +191,10 @@
 					<span class="badge">{queued}</span>
 				</a>
 			{/if}
+			<a class="btn" href={appHref('/people/constellation')}>
+				<Icon path={icons.sparkles} size={18} />
+				{m.people_constellation()}
+			</a>
 			<button type="button" class="btn" onclick={() => (recognitionOpen = true)}>
 				<Icon path={icons.face} size={18} />
 				{m.people_recognition()}

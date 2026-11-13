@@ -366,5 +366,58 @@
 	"people_relationship_suggest_children": "Daughter|Son",
 	"people_relationship_suggest_friends": "Friend|Childhood friend",
 	"people_relationship_suggest_work": "Colleague|Manager",
-	"people_relationship_suggest_pet": "Dog|Cat"
+	"people_relationship_suggest_pet": "Dog|Cat",
+	"people_constellation": "Constellation",
+	"people_constellation_subtitle": "Each person is a star: born with their first photo, and staying where the last one is.",
+	"people_constellation_you": "You",
+	"people_constellation_count": "With you: {alive} · Fixed: {fixed}",
+	"people_constellation_play": "Play",
+	"people_constellation_pause": "Pause",
+	"people_constellation_restart": "Restart",
+	"people_constellation_year": "Year",
+	"people_constellation_speed": "Speed",
+	"people_constellation_speed_slow": "Slow",
+	"people_constellation_speed_normal": "Normal",
+	"people_constellation_speed_fast": "Fast",
+	"people_constellation_view": "View",
+	"people_constellation_view_all": "Whole life",
+	"people_constellation_view_follow": "Follow the present",
+	"people_constellation_legend": "Show or hide by relationship",
+	"people_constellation_list": "People in the constellation",
+	"people_constellation_first": "First photo: {year}",
+	"people_constellation_last": "Last photo: {year}",
+	"people_constellation_ongoing": "Still appearing",
+	"people_constellation_photos": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{countFormatted} photo",
+				"countPlural=other": "{countFormatted} photos"
+			}
+		}
+	],
+	"people_constellation_star_fixed": "{name}, {relation}: {from} to {to}",
+	"people_constellation_star_alive": "{name}, {relation}: since {from}",
+	"people_constellation_unclassified": [
+		{
+			"declarations": [
+				"input count",
+				"local countPlural = count: plural",
+				"local countFormatted = count: number"
+			],
+			"selectors": ["countPlural"],
+			"match": {
+				"countPlural=one": "{countFormatted} unclassified person: give them a relationship from their page.",
+				"countPlural=other": "{countFormatted} unclassified people: give them a relationship from their page."
+			}
+		}
+	],
+	"people_constellation_empty": "No stars yet",
+	"people_constellation_empty_hint": "Name the people in your photos and they will appear here.",
+	"people_constellation_error": "The constellation could not be loaded"
 }
