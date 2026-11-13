@@ -210,6 +210,16 @@ describe('branches', () => {
 		expect(Math.abs(laneAt(daughter, 2026))).toBeGreaterThan(0.9);
 	});
 
+	it('whoever is born from the person the user is, is born from the main line', () => {
+		const people = [
+			{ ...person('nephew', { 2015: 4, 2026: 4 }, 'family'), branchFromPersonId: 'me' }
+		];
+		expect(star(buildSky(people, today), 'nephew').origin).toBeNull();
+		const nephew = star(buildSky(people, today, 'me'), 'nephew');
+		expect(nephew.origin).toBe('you');
+		expect(laneAt(nephew, nephew.start)).toBe(0);
+	});
+
 	it('ignores a branch from someone missing, already fixed or in a loop', () => {
 		expect(star(family('nobody'), 'niece').origin).toBeNull();
 		const stopped = buildSky(

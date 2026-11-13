@@ -45,6 +45,9 @@
 	<PersonAvatar faceId={person.coverFaceId} name={person.name} size="96px" />
 	<div class="facts">
 		<span class="faces">{m.people_faces({ count: person.faceCount })}</span>
+		{#if person.isSelf}
+			<span class="chip fact self">{m.people_self()}</span>
+		{/if}
 		{#if relationship}
 			<span class="chip fact">{relationship}</span>
 		{/if}
@@ -92,6 +95,7 @@
 		background: transparent;
 	}
 
+	.self,
 	.pending,
 	.pending:hover {
 		border-color: var(--color-accent);

@@ -21,7 +21,7 @@
 {#if constellation.data && constellation.data.people.length > 0}
 	<!-- The sky takes the whole window, as the map does. -->
 	<PageChrome bleed wide />
-	<Constellation people={constellation.data.people} />
+	<Constellation people={constellation.data.people} self={constellation.data.self} />
 {:else}
 	<div class="page">
 		<PageCrumbs href={appHref('/people')} label={m.nav_people()} inset />

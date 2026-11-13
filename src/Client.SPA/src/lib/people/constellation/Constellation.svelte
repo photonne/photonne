@@ -24,11 +24,13 @@
 
 	interface Props {
 		people: readonly SkyPerson[];
+		/** The person the user is, if they said so: the main line carries their name. */
+		self?: { id: string; name?: string | null } | null;
 		/** The present; a parameter so tests and screenshots are stable. */
 		today?: Date;
 	}
 
-	let { people, today = new Date() }: Props = $props();
+	let { people, self = null, today = new Date() }: Props = $props();
 
 	type Key = RelationshipCategory | 'none';
 	const keyOf = (category: RelationshipCategory | null): Key => category ?? 'none';
@@ -63,9 +65,11 @@
 	const sky = $derived(
 		buildSky(
 			people.filter((p) => !hidden.includes(keyOf(relationshipCategory(p.relationshipCategory)))),
-			today
+			today,
+			self?.id
 		)
 	);
+	const you = $derived(self?.name?.trim() || m.people_constellation_you());
 	const unclassified = $derived(people.filter((p) => !p.relationshipCategory).length);
 
 	const reduceMotion =
@@ -285,7 +289,7 @@
 		head(front, y(0), COLORS.you, 18 * (1 + 0.12 * Math.sin(twinkle * 2.1)), 1);
 		ctx.fillStyle = COLORS.you;
 		ctx.font = `600 13px ${font}`;
-		ctx.fillText(m.people_constellation_you(), front + 12, y(0));
+		ctx.fillText(you, front + 12, y(0));
 	}
 
 	onMount(() => {
