@@ -2718,6 +2718,30 @@
         ]
       }
     },
+    "/api/people/constellation": {
+      "get": {
+        "tags": [
+          "People"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeopleConstellationResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/people": {
       "get": {
         "tags": [
@@ -3063,6 +3087,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PersonAssetsPageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/people/{id}/relationship": {
+      "put": {
+        "tags": [
+          "People"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPersonRelationshipRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
@@ -13158,6 +13233,83 @@
           }
         }
       },
+      "ConstellationPersonDto": {
+        "required": [
+          "id",
+          "name",
+          "coverFaceId",
+          "relationshipCategory",
+          "relationshipLabel",
+          "firstCapturedAt",
+          "lastCapturedAt",
+          "assetCount",
+          "years"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "coverFaceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "relationshipCategory": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "relationshipLabel": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "firstCapturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastCapturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assetCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "years": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConstellationYearDto"
+            }
+          }
+        }
+      },
+      "ConstellationYearDto": {
+        "required": [
+          "year",
+          "assetCount"
+        ],
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "assetCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "CreateAlbumRequest": {
         "type": "object",
         "properties": {
@@ -15585,6 +15737,20 @@
           }
         }
       },
+      "PeopleConstellationResponse": {
+        "required": [
+          "people"
+        ],
+        "type": "object",
+        "properties": {
+          "people": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConstellationPersonDto"
+            }
+          }
+        }
+      },
       "PeoplePageResponse": {
         "required": [
           "total",
@@ -15668,7 +15834,9 @@
           "isHidden",
           "createdAt",
           "updatedAt",
-          "pendingSuggestionsCount"
+          "pendingSuggestionsCount",
+          "relationshipCategory",
+          "relationshipLabel"
         ],
         "type": "object",
         "properties": {
@@ -15707,6 +15875,18 @@
           "pendingSuggestionsCount": {
             "type": "integer",
             "format": "int32"
+          },
+          "relationshipCategory": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "relationshipLabel": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -17045,6 +17225,26 @@
           },
           "canManagePermissions": {
             "type": "boolean"
+          }
+        }
+      },
+      "SetPersonRelationshipRequest": {
+        "required": [
+          "category"
+        ],
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "label": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
