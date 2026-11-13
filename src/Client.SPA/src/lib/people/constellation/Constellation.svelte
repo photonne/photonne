@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
+	import Icon from '#lib/components/Icon.svelte';
+	import { icons as libraryIcons } from '#lib/library/icons.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import {
@@ -9,6 +11,7 @@
 		relationshipCategory,
 		type RelationshipCategory
 	} from '../relationship.js';
+	import { icons } from '../icons.js';
 	import {
 		brightness,
 		buildSky,
@@ -46,8 +49,10 @@
 	/** Seconds a whole life takes to play. */
 	const SPEEDS = { slow: 45, normal: 20, fast: 9 } as const;
 	const MIN_LANE = 18;
-	const PAD_TOP = 26;
-	const PAD_BOTTOM = 46;
+	// Room the floating capsules take over the sky: the title above; the
+	// legend and the controls below.
+	const TITLE_ROOM = 56;
+	const CONTROLS_ROOM = 118;
 
 	// Categories in use, in the legend's order; pressing one hides its stars.
 	const present = $derived.by(() => {
@@ -81,16 +86,25 @@
 	let canvas = $state<HTMLCanvasElement>();
 	let width = $state(0);
 	let viewHeight = $state(0);
+	// What the app's chrome covers of the window (AppShell's --bleed-*), in
+	// pixels: the navigation island at the left, the bar above, a phone's below.
+	let probe = $state<HTMLDivElement>();
+	let bleed = $state({ top: 0, left: 0, bottom: 0 });
+	const padTop = $derived(bleed.top + TITLE_ROOM + 14);
+	const padBottom = $derived(bleed.bottom + CONTROLS_ROOM + 34);
 	const lanes = $derived(sky.bottom - sky.top + 1.6);
-	const height = $derived(Math.max(viewHeight, lanes * MIN_LANE + PAD_TOP + PAD_BOTTOM));
+	const height = $derived(Math.max(viewHeight, lanes * MIN_LANE + padTop + padBottom));
 
 	// 0 = the whole life fits; 1 = zoomed in, following the present.
 	let mix = 0;
 	let labelRoom = 80;
 
 	function x(t: number) {
-		const full = 20 + ((t - sky.from) / (sky.to - sky.from)) * (width - 20 - labelRoom);
-		const following = width * 0.7 + (t - now) * Math.max(width / 11, 58);
+		const left = bleed.left + 24;
+		const full = left + ((t - sky.from) / (sky.to - sky.from)) * (width - left - labelRoom);
+		// The present in the middle of what the navigation leaves free.
+		const following =
+			(bleed.left + width) / 2 + (t - now) * Math.max((width - bleed.left) / 11, 58);
 		return full + (following - full) * mix;
 	}
 
@@ -100,7 +114,7 @@
 	}
 
 	function y(lane: number) {
-		return PAD_TOP + (lane - sky.top + 0.8) * ((height - PAD_TOP - PAD_BOTTOM) / lanes);
+		return padTop + (lane - sky.top + 0.8) * ((height - padTop - padBottom) / lanes);
 	}
 
 	const rgba = (hex: string, alpha: number) => {
@@ -142,7 +156,8 @@
 		);
 
 		// Year lines.
-		const bottom = height - PAD_BOTTOM + 16;
+		const top = padTop - 14;
+		const bottom = height - padBottom + 12;
 		const step = yearStep(x(1) - x(0));
 		ctx.font = `11px ${font}`;
 		ctx.textAlign = 'center';
@@ -150,25 +165,25 @@
 		ctx.lineWidth = 1;
 		for (let year = Math.ceil(sky.from / step) * step; year <= sky.to; year += step) {
 			const px = x(year);
-			if (px < 0 || px > width) continue;
+			if (px < bleed.left + 8 || px > width) continue;
 			ctx.strokeStyle = 'rgba(160,175,230,.08)';
 			ctx.beginPath();
-			ctx.moveTo(px, 14);
+			ctx.moveTo(px, top);
 			ctx.lineTo(px, bottom);
 			ctx.stroke();
 			ctx.fillStyle = year > now ? rgba(MUTED, 0.35) : MUTED;
-			ctx.fillText(String(year), px, height - 12);
+			ctx.fillText(String(year), px, bottom + 18);
 		}
 
 		// The present.
 		const front = x(now);
-		const glow = ctx.createLinearGradient(0, 14, 0, bottom);
+		const glow = ctx.createLinearGradient(0, top, 0, bottom);
 		glow.addColorStop(0, 'rgba(255,255,255,0)');
 		glow.addColorStop(0.5, 'rgba(255,255,255,.22)');
 		glow.addColorStop(1, 'rgba(255,255,255,0)');
 		ctx.strokeStyle = glow;
 		ctx.beginPath();
-		ctx.moveTo(front, 14);
+		ctx.moveTo(front, top);
 		ctx.lineTo(front, bottom);
 		ctx.stroke();
 
@@ -291,6 +306,16 @@
 				now = Math.min(next, sky.to);
 			}
 			mix += ((follow ? 1 : 0) - mix) * (reduceMotion ? 1 : Math.min(1, dt * 5));
+			if (probe) {
+				const style = getComputedStyle(probe);
+				const next = {
+					top: parseFloat(style.paddingTop) || 0,
+					left: parseFloat(style.paddingLeft) || 0,
+					bottom: parseFloat(style.paddingBottom) || 0
+				};
+				if (next.top !== bleed.top || next.left !== bleed.left || next.bottom !== bleed.bottom)
+					bleed = next;
+			}
 			draw(ms);
 			frame = requestAnimationFrame(tick);
 		};
@@ -300,6 +325,14 @@
 			cancelAnimationFrame(frame);
 		};
 	});
+
+	const playLabel = $derived(
+		playing
+			? m.people_constellation_pause()
+			: atEnd
+				? m.people_constellation_restart()
+				: m.people_constellation_play()
+	);
 
 	function toggle() {
 		if (!playing && atEnd) now = sky.from;
@@ -348,15 +381,7 @@
 </script>
 
 <div class="constellation">
-	<div class="status" aria-live="off">
-		<span class="year">{Math.floor(now)}</span>
-		<span class="count">
-			{m.people_constellation_count({
-				alive: started.length - stopped.length,
-				fixed: stopped.length
-			})}
-		</span>
-	</div>
+	<div class="probe" bind:this={probe}></div>
 
 	<div class="sky" bind:this={wrap}>
 		<div class="stage" style:height="{height}px">
@@ -375,8 +400,8 @@
 				{@const star = hover.star}
 				<div
 					class="tip"
-					style:left="{Math.min(hover.x + 14, Math.max(8, width - 236))}px"
-					style:top="{Math.max(8, Math.min(hover.y + 14, height - 124))}px"
+					style:left="{Math.max(bleed.left + 8, Math.min(hover.x + 14, width - 236))}px"
+					style:top="{Math.max(padTop, Math.min(hover.y + 14, height - padBottom - 90))}px"
 				>
 					<strong>{star.name}</strong>
 					<span>{relation(star)}</span>
@@ -397,13 +422,40 @@
 		</ul>
 	</div>
 
-	<div class="controls">
-		<button type="button" class="btn primary play" onclick={toggle}>
-			{playing
-				? m.people_constellation_pause()
-				: atEnd
-					? m.people_constellation_restart()
-					: m.people_constellation_play()}
+	<!-- Over the sky, as on the map: what the page is, at the top left. -->
+	<div class="title glass">
+		<a href={appHref('/people')} aria-label={m.people_back()} title={m.people_back()}>
+			<Icon path={libraryIcons.arrowBack} size={18} />
+		</a>
+		<h1>{m.people_constellation()}</h1>
+		<span class="year">{Math.floor(now)}</span>
+		<span class="count">
+			{m.people_constellation_count({
+				alive: started.length - stopped.length,
+				fixed: stopped.length
+			})}
+		</span>
+	</div>
+
+	<div class="legend glass" role="group" aria-label={m.people_constellation_legend()}>
+		{#each present as key (key)}
+			<button
+				type="button"
+				aria-pressed={!hidden.includes(key)}
+				title={key === 'none'
+					? m.people_constellation_unclassified({ count: unclassified })
+					: undefined}
+				onclick={() => toggleCategory(key)}
+			>
+				<span class="dot" style:background={COLORS[key]}></span>
+				{categoryName(key === 'none' ? null : key)}
+			</button>
+		{/each}
+	</div>
+
+	<div class="bar glass">
+		<button type="button" class="play" aria-label={playLabel} title={playLabel} onclick={toggle}>
+			<Icon path={playing ? libraryIcons.pause : atEnd ? icons.replay : libraryIcons.play} />
 		</button>
 		<input
 			type="range"
@@ -421,7 +473,7 @@
 		/>
 		<label class="speed">
 			<span class="visually-hidden">{m.people_constellation_speed()}</span>
-			<select bind:value={speed}>
+			<select class="bare" bind:value={speed}>
 				<option value="slow">{m.people_constellation_speed_slow()}</option>
 				<option value="normal">{m.people_constellation_speed_normal()}</option>
 				<option value="fast">{m.people_constellation_speed_fast()}</option>
@@ -436,62 +488,31 @@
 			</button>
 		</div>
 	</div>
-
-	<div class="legend" role="group" aria-label={m.people_constellation_legend()}>
-		{#each present as key (key)}
-			<button
-				type="button"
-				class="chip"
-				aria-pressed={!hidden.includes(key)}
-				onclick={() => toggleCategory(key)}
-			>
-				<span class="dot" style:background={COLORS[key]}></span>
-				{categoryName(key === 'none' ? null : key)}
-			</button>
-		{/each}
-		{#if unclassified > 0}
-			<span class="note">{m.people_constellation_unclassified({ count: unclassified })}</span>
-		{/if}
-	</div>
 </div>
 
 <style>
+	/* The whole window, like the map: night whatever the theme, with the
+	   app's glass capsules floating over it. */
 	.constellation {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
-		height: 100%;
-		min-height: 0;
-		padding: 0 var(--page-gutter) var(--space-4);
-	}
-
-	.status {
-		display: flex;
-		align-items: baseline;
-		gap: var(--space-3);
-	}
-
-	.year {
-		font-size: 2rem;
-		font-weight: 600;
-		line-height: 1;
-		font-variant-numeric: tabular-nums;
-	}
-
-	.count {
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
-		font-variant-numeric: tabular-nums;
-	}
-
-	/* Night whatever the theme. Scrolls when there are more lanes than room. */
-	.sky {
 		position: relative;
-		flex: 1;
-		min-height: 320px;
-		overflow: hidden auto;
-		border-radius: var(--radius-md);
+		height: 100%;
+		isolation: isolate;
 		background: radial-gradient(120% 90% at 70% 40%, #0d1430, #070b1a 70%);
+	}
+
+	/* Never seen: turns the chrome's --bleed-* into pixels the canvas can read. */
+	.probe {
+		position: absolute;
+		visibility: hidden;
+		padding: var(--bleed-top) 0 var(--bleed-bottom) var(--bleed-left);
+		pointer-events: none;
+	}
+
+	/* Scrolls when there are more lanes than room. */
+	.sky {
+		position: absolute;
+		inset: 0;
+		overflow: hidden auto;
 	}
 
 	.stage {
@@ -529,33 +550,123 @@
 		font-size: var(--font-size-sm);
 	}
 
-	.controls {
+	.glass {
+		--glass-tint: 82%;
+		position: absolute;
+		left: calc(var(--bleed-left) + var(--float-margin));
+		z-index: 2;
+		max-width: calc(100% - var(--bleed-left) - 2 * var(--float-margin));
+		border-radius: var(--radius-pill);
+		box-shadow: var(--shadow-bar);
+	}
+
+	.title {
+		top: calc(var(--bleed-top) + var(--space-1));
 		display: flex;
-		flex-wrap: wrap;
 		align-items: center;
 		gap: var(--space-3);
+		padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
+	}
+
+	.title a {
+		display: grid;
+		color: var(--color-text-muted);
+	}
+
+	.title h1,
+	.year {
+		margin: 0;
+		font-size: var(--font-size-lg);
+		font-weight: 650;
+	}
+
+	.year,
+	.count {
+		font-variant-numeric: tabular-nums;
+	}
+
+	.count {
+		overflow: hidden;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* Centered in what the navigation leaves free. */
+	.bar {
+		right: var(--float-margin);
+		bottom: calc(var(--bleed-bottom) + var(--float-margin));
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		width: min(820px, 100% - var(--bleed-left) - 2 * var(--float-margin));
+		margin-inline: auto;
+		padding: var(--space-2);
 	}
 
 	.play {
-		min-width: 7.5rem;
-		justify-content: center;
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 36px;
+		height: 36px;
+		border: 0;
+		border-radius: 50%;
+		background: var(--color-primary-fill);
+		color: var(--color-on-primary-fill);
+		cursor: pointer;
 	}
 
 	.scrub {
-		flex: 1 1 220px;
-		min-width: 160px;
+		flex: 1;
+		min-width: 60px;
 		accent-color: var(--color-primary-fill);
 	}
 
-	.legend {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--space-2);
+	.speed select {
+		border: 0;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-size: var(--font-size-sm);
+		cursor: pointer;
 	}
 
-	.chip[aria-pressed='false'] {
-		opacity: 0.55;
+	.bar .segmented {
+		flex: none;
+		background: var(--color-active-pill);
+	}
+
+	.legend {
+		bottom: calc(var(--bleed-bottom) + var(--float-margin) + 52px + var(--space-2));
+		display: flex;
+		gap: 2px;
+		overflow-x: auto;
+		padding: var(--space-1);
+		scrollbar-width: none;
+	}
+
+	.legend button {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-1) var(--space-3);
+		border: 0;
+		border-radius: var(--radius-pill);
+		background: transparent;
+		color: inherit;
+		font-size: var(--font-size-sm);
+		white-space: nowrap;
+		cursor: pointer;
+	}
+
+	.legend button:hover {
+		background: var(--color-hover);
+	}
+
+	.legend button[aria-pressed='false'] {
+		opacity: 0.45;
 	}
 
 	.dot {
@@ -565,8 +676,14 @@
 		border-radius: 50%;
 	}
 
-	.note {
-		color: var(--color-text-muted);
-		font-size: var(--font-size-xs);
+	/* A phone: the speed gives its room to the year. */
+	@media (max-width: 640px) {
+		.speed {
+			display: none;
+		}
+
+		.bar .segmented {
+			flex: 0 1 auto;
+		}
 	}
 </style>
