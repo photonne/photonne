@@ -23,10 +23,13 @@ test('draws a star per named person, fixed where their last photo is', async ({ 
 		'Ana, Sin clasificar: desde 2012',
 		'Luis, Amistades: desde 2015'
 	]);
-	await expect(page.getByText('2 personas sin clasificar')).toBeVisible();
 
 	// The legend hides a whole relationship.
 	const legend = page.getByRole('group', { name: 'Mostrar u ocultar por relación' });
+	await expect(legend.getByRole('button', { name: 'Sin clasificar' })).toHaveAttribute(
+		'title',
+		/^2 personas sin clasificar/
+	);
 	await legend.getByRole('button', { name: 'Amistades' }).click();
 	await expect(page.getByText('Contigo: 1 · Fijas: 1')).toBeVisible();
 	await expect(stars).toHaveCount(2);

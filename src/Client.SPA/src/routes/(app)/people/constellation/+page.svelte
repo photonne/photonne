@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
 	import { getApiPeopleConstellationOptions } from '#lib/api/generated/@tanstack/svelte-query.gen.js';
+	import PageChrome from '#lib/components/PageChrome.svelte';
 	import EmptyState from '#lib/components/ui/EmptyState.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Skeleton from '#lib/components/ui/Skeleton.svelte';
@@ -17,31 +18,35 @@
 	<title>{m.people_constellation()} · {m.app_name()}</title>
 </svelte:head>
 
-<div class="page">
-	<PageCrumbs href={appHref('/people')} label={m.nav_people()} inset />
-	<PageHeader title={m.people_constellation()} subtitle={m.people_constellation_subtitle()} />
-	<div class="body">
-		{#if constellation.isPending}
-			<Skeleton variant="cards" />
-		{:else if constellation.isError}
-			<div role="alert">
-				<EmptyState iconPath={icons.sparkles} title={m.people_constellation_error()} />
-			</div>
-		{:else if constellation.data.people.length === 0}
-			<EmptyState
-				iconPath={icons.sparkles}
-				title={m.people_constellation_empty()}
-				hint={m.people_constellation_empty_hint()}
-			>
-				{#snippet action()}
-					<a class="btn" href={appHref('/people')}>{m.people_back()}</a>
-				{/snippet}
-			</EmptyState>
-		{:else}
-			<Constellation people={constellation.data.people} />
-		{/if}
+{#if constellation.data && constellation.data.people.length > 0}
+	<!-- The sky takes the whole window, as the map does. -->
+	<PageChrome bleed wide />
+	<Constellation people={constellation.data.people} />
+{:else}
+	<div class="page">
+		<PageCrumbs href={appHref('/people')} label={m.nav_people()} inset />
+		<PageHeader title={m.people_constellation()} subtitle={m.people_constellation_subtitle()} />
+		<div class="body">
+			{#if constellation.isPending}
+				<Skeleton variant="cards" />
+			{:else if constellation.isError}
+				<div role="alert">
+					<EmptyState iconPath={icons.sparkles} title={m.people_constellation_error()} />
+				</div>
+			{:else}
+				<EmptyState
+					iconPath={icons.sparkles}
+					title={m.people_constellation_empty()}
+					hint={m.people_constellation_empty_hint()}
+				>
+					{#snippet action()}
+						<a class="btn" href={appHref('/people')}>{m.people_back()}</a>
+					{/snippet}
+				</EmptyState>
+			{/if}
+		</div>
 	</div>
-</div>
+{/if}
 
 <style>
 	.page {
