@@ -21,7 +21,7 @@
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
 		"@hey-api/openapi-ts": "0.99.0",
-		"@inlang/paraglide-js": "^2.29.3",
+		"@inlang/paraglide-js": "^3.2.1",
 		"@inlang/plugin-m-function-matcher": "^2.4.3",
 		"@inlang/plugin-message-format": "^4.6.0",
 		"@playwright/test": "^1.65.0",
