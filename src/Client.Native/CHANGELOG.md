@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.7.2](https://github.com/photonne/photonne/compare/native-v2.7.1...native-v2.7.2) (2026-11-13)
+
+
+### Dependencias
+
+* **native:** bump com.android.application ([dd71c65](https://github.com/photonne/photonne/commit/dd71c65ae80a9a72b172967d3e061a427aef019c))
+* **native:** bump the gradle-minor group ([80478d6](https://github.com/photonne/photonne/commit/80478d6e168a2bce476d4022b64b9553ae2ffc1f))
+
 ## [2.7.1](https://github.com/photonne/photonne/compare/native-v2.7.0...native-v2.7.1) (2026-10-29)
 
 
