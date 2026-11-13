@@ -58,6 +58,37 @@ test('a relationship given on the person page colors their star', async ({ page 
 	);
 });
 
+test('"soy yo" turns a person into the main line instead of a star', async ({ page }) => {
+	const api = await fakeApi(page, { signedIn: true });
+	await page.goto('/people/person-ana');
+	const me = page.getByRole('button', { name: 'Soy yo' });
+	await expect(me).toHaveAttribute('aria-pressed', 'false');
+	await me.click();
+	await expect(page.getByText('Esta persona eres tú')).toBeVisible();
+	await expect(me).toHaveAttribute('aria-pressed', 'true');
+	await expect(page.getByText('Eres tú', { exact: true })).toBeVisible();
+	expect(peopleState(api.state).people[0].isSelf).toBe(true);
+
+	// Ana is no longer one of the stars.
+	await page.goto('/people/constellation');
+	await expect(
+		page.getByRole('list', { name: 'Personas de la constelación' }).getByRole('listitem')
+	).toHaveText(['José, Sin clasificar: de 2009 a 2016', 'Luis, Amistades: desde 2015']);
+
+	// Only one person is the user.
+	await page.goto('/people/person-luis');
+	await page.getByRole('button', { name: 'Soy yo' }).click();
+	await expect(page.getByText('Esta persona eres tú')).toBeVisible();
+	expect(
+		peopleState(api.state)
+			.people.filter((p) => p.isSelf)
+			.map((p) => p.id)
+	).toEqual(['person-luis']);
+	await page.getByRole('button', { name: 'Soy yo' }).click();
+	await expect(page.getByText('Esta persona ya no eres tú.')).toBeVisible();
+	expect(peopleState(api.state).people.some((p) => p.isSelf)).toBe(false);
+});
+
 test('without named people it says how to get stars', async ({ page }) => {
 	const api = await fakeApi(page, { signedIn: true });
 	for (const person of peopleState(api.state).people) person.name = null;

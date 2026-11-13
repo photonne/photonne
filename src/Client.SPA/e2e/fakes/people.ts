@@ -29,6 +29,7 @@ interface Person {
 	relationshipCategory: string | null;
 	relationshipLabel: string | null;
 	branchFromPersonId: string | null;
+	isSelf: boolean;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -94,6 +95,7 @@ function initial(): PeopleState {
 			relationshipCategory: entry.relationship?.[0] ?? null,
 			relationshipLabel: entry.relationship?.[1] ?? null,
 			branchFromPersonId: null,
+			isSelf: false,
 			createdAt: '2026-01-01T00:00:00Z',
 			updatedAt: '2026-01-01T00:00:00Z'
 		});
@@ -378,7 +380,7 @@ const handle: FakeHandler = async ({ method, path, request, authorized, json, ro
 
 	if (method === 'GET' && path === '/api/people/constellation') {
 		const people = s.people
-			.filter((p) => p.name !== null && !p.isHidden && lives[p.id])
+			.filter((p) => p.name !== null && !p.isHidden && !p.isSelf && lives[p.id])
 			.map((p) => {
 				const [from, to, perYear] = lives[p.id];
 				const years = Array.from({ length: to - from + 1 }, (_, i) => ({
@@ -398,7 +400,9 @@ const handle: FakeHandler = async ({ method, path, request, authorized, json, ro
 					years
 				};
 			});
-		return done({ people } satisfies PeopleConstellationResponse);
+		const me = s.people.find((p) => p.isSelf);
+		const self = me ? { id: me.id, name: me.name, coverFaceId: me.coverFaceId } : null;
+		return done({ people, self } satisfies PeopleConstellationResponse);
 	}
 
 	const person = find(parts[1]);
@@ -416,6 +420,12 @@ const handle: FakeHandler = async ({ method, path, request, authorized, json, ro
 		const body = request.postDataJSON() as { category: string | null; label?: string | null };
 		person.relationshipCategory = body.category;
 		person.relationshipLabel = body.category ? body.label?.trim() || null : null;
+		return ok();
+	}
+	if (method === 'PUT' && parts[2] === 'self') {
+		const isSelf = (request.postDataJSON() as { isSelf: boolean }).isSelf;
+		if (isSelf) for (const other of s.people) other.isSelf = false;
+		person.isSelf = isSelf;
 		return ok();
 	}
 	if (method === 'PUT' && parts[2] === 'branch') {

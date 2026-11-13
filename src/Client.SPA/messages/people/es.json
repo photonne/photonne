@@ -429,5 +429,9 @@
 	"people_branch_hint": "En la constelación, su estela saldrá de la de esa persona: la sobrina, de la hermana.",
 	"people_branch_cycle": "No se puede: esa persona ya nace de la estela de esta.",
 	"people_constellation_born_from": "Nace de {name}",
-	"people_constellation_born_from_you": "Nace de tu línea"
+	"people_constellation_born_from_you": "Nace de tu línea",
+	"people_action_self": "Soy yo",
+	"people_self": "Eres tú",
+	"people_self_on": "Esta persona eres tú: en la constelación es la línea principal.",
+	"people_self_off": "Esta persona ya no eres tú."
 }

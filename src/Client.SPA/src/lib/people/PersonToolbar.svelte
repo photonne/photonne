@@ -1,19 +1,20 @@
 <script lang="ts">
 	import { useQueryClient } from '@tanstack/svelte-query';
 	import { goto } from '$app/navigation';
-	import { getApiPeopleById, type PersonDto } from '#lib/api/index.js';
+	import { getApiPeopleById, putApiPeopleByIdSelf, type PersonDto } from '#lib/api/index.js';
 	import Icon from '#lib/components/Icon.svelte';
 	import { toasts } from '#lib/components/toasts.svelte.js';
 	import { appHref } from '#lib/navigation/href.js';
 	import { m } from '#lib/paraglide/messages.js';
 	import { setPeopleHidden } from './actions.js';
+	import { invalidatePeople } from './cache.js';
 	import { icons } from './icons.js';
 	import MergeDialog from './MergeDialog.svelte';
 	import PersonPickerDialog from './PersonPickerDialog.svelte';
 	import RelationshipDialog from './RelationshipDialog.svelte';
 	import RenameDialog from './RenameDialog.svelte';
 
-	/** Rename, relationship, merge and hide for a person's own pages. */
+	/** Rename, relationship, "soy yo", merge and hide for a person's own pages. */
 	let { person }: { person: PersonDto } = $props();
 
 	const queryClient = useQueryClient();
@@ -31,6 +32,20 @@
 			return;
 		}
 		merging = [person, data];
+	}
+
+	/** "Soy yo": this person is the user, the constellation's main line. */
+	async function toggleSelf() {
+		busy = true;
+		const isSelf = !person.isSelf;
+		const { error } = await putApiPeopleByIdSelf({ path: { id: person.id }, body: { isSelf } });
+		busy = false;
+		if (error) {
+			toasts.error(m.action_failed());
+			return;
+		}
+		await invalidatePeople(queryClient);
+		toasts.show(isSelf ? m.people_self_on() : m.people_self_off());
 	}
 
 	async function toggleHidden() {
@@ -57,6 +72,17 @@
 	onclick={() => (relating = person)}
 >
 	<Icon path={icons.group} />
+</button>
+<button
+	type="button"
+	class="icon-btn"
+	disabled={busy}
+	aria-pressed={person.isSelf}
+	title={m.people_action_self()}
+	aria-label={m.people_action_self()}
+	onclick={toggleSelf}
+>
+	<Icon name="person" />
 </button>
 <button
 	type="button"

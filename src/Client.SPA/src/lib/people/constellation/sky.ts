@@ -90,8 +90,16 @@ function statusOf(end: number, today: number): StarStatus {
 	return gap >= FIXED_AFTER ? 'fixed' : gap >= FADE_AFTER ? 'fading' : 'alive';
 }
 
-/** Places every person in the sky as it is `today`. */
-export function buildSky(people: readonly SkyPerson[], today: Date): Sky {
+/**
+ * Places every person in the sky as it is `today`. `selfId` is the person the
+ * user is (not among `people`): whoever is born from them is born from the
+ * main line.
+ */
+export function buildSky(
+	people: readonly SkyPerson[],
+	today: Date,
+	selfId: string | null = null
+): Sky {
 	const to = decimalYear(today);
 	const stars: Star[] = people.map((person) => {
 		// A camera with the wrong date can't put a photo in the future.
@@ -123,7 +131,11 @@ export function buildSky(people: readonly SkyPerson[], today: Date): Sky {
 		const parent = person.branchFromPersonId ? byId.get(person.branchFromPersonId) : undefined;
 		if (parent && parent !== star && parent.start <= star.start && star.start <= parent.until) {
 			star.origin = parent;
-		} else if (!person.branchFromPersonId && star.category === 'children') {
+		} else if (
+			person.branchFromPersonId
+				? person.branchFromPersonId === selfId
+				: star.category === 'children'
+		) {
 			star.origin = 'you';
 		}
 	}

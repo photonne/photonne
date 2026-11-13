@@ -429,5 +429,9 @@
 	"people_branch_hint": "In the constellation, their trail will come out of that person's: the niece, from the sister.",
 	"people_branch_cycle": "Not possible: that person is already born from this one's trail.",
 	"people_constellation_born_from": "Born from {name}",
-	"people_constellation_born_from_you": "Born from your line"
+	"people_constellation_born_from_you": "Born from your line",
+	"people_action_self": "This is me",
+	"people_self": "This is you",
+	"people_self_on": "This person is you: the main line of the constellation.",
+	"people_self_off": "This person is no longer you."
 }
