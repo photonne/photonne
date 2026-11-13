@@ -34,6 +34,10 @@ public class Person
     public Guid? BranchFromPersonId { get; set; }
     public Person? BranchFrom { get; set; }
 
+    // La persona que es el propio dueño: en la constelación no es una estrella
+    // más, sino la línea principal. Como mucho una por dueño.
+    public bool IsSelf { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

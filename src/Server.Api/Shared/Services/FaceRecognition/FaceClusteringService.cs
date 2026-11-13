@@ -802,6 +802,13 @@ public class FaceClusteringService
             target.RelationshipLabel = source.RelationshipLabel;
         }
 
+        // Y quién es el usuario: si era la que desaparece, pasa a ser la que queda.
+        if (source.IsSelf)
+        {
+            source.IsSelf = false;
+            target.IsSelf = true;
+        }
+
         // Las ramas también: quien nacía de la que desaparece pasa a nacer de la
         // que queda, y esta hereda de quién nacía aquella si no cierra un ciclo.
         var branches = await _dbContext.People

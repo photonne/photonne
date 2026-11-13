@@ -23,7 +23,14 @@ public sealed record ConstellationPersonDto(
     List<ConstellationYearDto> Years,
     Guid? BranchFromPersonId = null);
 
-public sealed record PeopleConstellationResponse(List<ConstellationPersonDto> People);
+/// <summary>La persona que es el propio usuario: la línea principal.</summary>
+public sealed record ConstellationSelfDto(Guid Id, string? Name, Guid? CoverFaceId);
+
+/// <param name="People">Una estrella por persona; la que es el usuario no está entre ellas.</param>
+/// <param name="Self">La persona marcada como «soy yo», si hay alguna.</param>
+public sealed record PeopleConstellationResponse(
+    List<ConstellationPersonDto> People,
+    ConstellationSelfDto? Self = null);
 
 /// <summary>
 /// Datos de la constelación: por cada persona con nombre y visible, su relación
@@ -47,8 +54,15 @@ public class PeopleConstellationEndpoint : IEndpoint
     {
         if (!ListPeopleEndpoint.TryGetUserId(user, out var userId)) return TypedResults.Unauthorized();
 
+        // Quien es el usuario no es una estrella: es la línea principal, tenga o
+        // no nombre y esté o no oculta.
+        var self = await db.People.AsNoTracking()
+            .Where(p => p.OwnerId == userId && p.IsSelf)
+            .Select(p => new ConstellationSelfDto(p.Id, p.Name, p.CoverFaceId))
+            .FirstOrDefaultAsync(ct);
+
         var people = await db.People.AsNoTracking()
-            .Where(p => p.OwnerId == userId && !p.IsHidden && p.Name != null)
+            .Where(p => p.OwnerId == userId && !p.IsHidden && p.Name != null && !p.IsSelf)
             .Select(p => new { p.Id, Name = p.Name!, p.CoverFaceId, p.RelationshipCategory, p.RelationshipLabel, p.BranchFromPersonId })
             .ToListAsync(ct);
 
@@ -62,6 +76,7 @@ public class PeopleConstellationEndpoint : IEndpoint
                         && !uf.IsRejected
                         && !uf.Person!.IsHidden
                         && uf.Person.Name != null
+                        && !uf.Person.IsSelf
                         && uf.Face.Asset.DeletedAt == null
                         && !uf.Face.Asset.IsFileMissing)
             .Select(uf => new { PersonId = uf.PersonId!.Value, uf.Face.AssetId, uf.Face.Asset.CapturedAt })
@@ -100,6 +115,6 @@ public class PeopleConstellationEndpoint : IEndpoint
             .ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return TypedResults.Ok(new PeopleConstellationResponse(result));
+        return TypedResults.Ok(new PeopleConstellationResponse(result, self));
     }
 }

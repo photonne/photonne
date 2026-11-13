@@ -16,9 +16,11 @@ public sealed class PeopleConstellationTests : IntegrationTestBase
         Guid Id, string Name, string? RelationshipCategory, string? RelationshipLabel,
         DateTime FirstCapturedAt, DateTime LastCapturedAt, int AssetCount, List<YearDto> Years,
         Guid? BranchFromPersonId);
-    private sealed record Constellation(List<StarDto> People);
+    private sealed record SelfDto(Guid Id, string? Name);
+    private sealed record Constellation(List<StarDto> People, SelfDto? Self);
     private sealed record PersonBody(
-        Guid Id, string? Name, string? RelationshipCategory, string? RelationshipLabel, Guid? BranchFromPersonId);
+        Guid Id, string? Name, string? RelationshipCategory, string? RelationshipLabel, Guid? BranchFromPersonId,
+        bool IsSelf);
     private sealed record ErrorBody(string Error, string Code);
 
     private Task<Person> PersonAsync(TestUser owner, string? name, bool hidden = false) =>
@@ -284,5 +286,56 @@ public sealed class PeopleConstellationTests : IntegrationTestBase
 
         var person = await client.GetFromJsonAsync<PersonBody>($"/api/people/{niece.Id}");
         Assert.Null(person!.BranchFromPersonId);
+    }
+
+    private static Task<HttpResponseMessage> SelfAsync(HttpClient client, Person person, bool isSelf = true) =>
+        client.PutAsJsonAsync($"/api/people/{person.Id}/self", new { isSelf });
+
+    [Fact]
+    public async Task Self_IsTheMainLineAndNotAStar_AndOnlyOnePersonCanBeIt()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var (_, bobClient) = await CreateAuthenticatedUserAsync();
+        var me = await PersonAsync(alice, "Alicia");
+        var other = await PersonAsync(alice, "Ana");
+        await PhotoAsync(alice, me, Day(2001, 1, 1));
+        await PhotoAsync(alice, other, Day(2010, 1, 1));
+
+        var before = await client.GetFromJsonAsync<Constellation>("/api/people/constellation");
+        Assert.Null(before!.Self);
+        Assert.Equal(2, before.People.Count);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await SelfAsync(bobClient, me)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await SelfAsync(client, me)).StatusCode);
+
+        var sky = await client.GetFromJsonAsync<Constellation>("/api/people/constellation");
+        Assert.Equal(new SelfDto(me.Id, "Alicia"), sky!.Self);
+        Assert.Equal(other.Id, Assert.Single(sky.People).Id);
+        Assert.True((await client.GetFromJsonAsync<PersonBody>($"/api/people/{me.Id}"))!.IsSelf);
+
+        // Marcar a otra desmarca la anterior.
+        (await SelfAsync(client, other)).EnsureSuccessStatusCode();
+        Assert.False((await client.GetFromJsonAsync<PersonBody>($"/api/people/{me.Id}"))!.IsSelf);
+        sky = await client.GetFromJsonAsync<Constellation>("/api/people/constellation");
+        Assert.Equal(other.Id, sky!.Self!.Id);
+        Assert.Equal(me.Id, Assert.Single(sky.People).Id);
+
+        (await SelfAsync(client, other, isSelf: false)).EnsureSuccessStatusCode();
+        sky = await client.GetFromJsonAsync<Constellation>("/api/people/constellation");
+        Assert.Null(sky!.Self);
+        Assert.Equal(2, sky.People.Count);
+    }
+
+    [Fact]
+    public async Task Merge_KeepsWhoTheUserIs()
+    {
+        var (alice, client) = await CreateAuthenticatedUserAsync();
+        var keep = await PersonAsync(alice, "Alicia");
+        var gone = await PersonAsync(alice, "Alicia (duplicada)");
+        (await SelfAsync(client, gone)).EnsureSuccessStatusCode();
+
+        (await client.PostAsync($"/api/people/{keep.Id}/merge/{gone.Id}", null)).EnsureSuccessStatusCode();
+
+        Assert.True((await client.GetFromJsonAsync<PersonBody>($"/api/people/{keep.Id}"))!.IsSelf);
     }
 }
