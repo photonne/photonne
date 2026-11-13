@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.13.0](https://github.com/photonne/photonne/compare/server-v2.12.2...server-v2.13.0) (2026-11-13)
+
+
+### Novedades
+
+* **server:** relación de cada persona y datos para la constelación ([1f156a2](https://github.com/photonne/photonne/commit/1f156a2db30ed01b1c91ef9faf2276a79c855183))
+* **spa:** constelación de personas a lo largo del tiempo ([7cdfa94](https://github.com/photonne/photonne/commit/7cdfa9451f27e6ae0b80603c5eb6c58622ead9fd))
+* **spa:** relación de cada persona desde su ficha ([dec05d8](https://github.com/photonne/photonne/commit/dec05d886ec9fd09ca975e646134392ee542cece))
+
 ## [2.12.2](https://github.com/photonne/photonne/compare/server-v2.12.1...server-v2.12.2) (2026-11-13)
 
 
