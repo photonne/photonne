@@ -203,6 +203,44 @@ test('a person page says who they are to you: category, label, and none again', 
 	expect(peopleState(api.state).people[0].relationshipCategory).toBeNull();
 });
 
+test('a person can be born from the trail of another, but not both from each other', async ({
+	page
+}) => {
+	const api = await fakeApi(page, { signedIn: true });
+	const people = peopleState(api.state).people;
+	await page.goto('/people/person-luis');
+	await expect(page.getByRole('heading', { name: 'Luis', level: 1 })).toBeVisible();
+
+	await page.getByRole('button', { name: 'Relación' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Relación con Luis' });
+	await expect(dialog.getByText('Nadie: nace por su cuenta')).toBeVisible();
+	await dialog.getByRole('button', { name: 'Elegir persona…' }).click();
+	const picker = page.getByRole('dialog', { name: 'Nace de la estela de' });
+	await expect(picker.getByRole('button', { name: /^Luis/ })).toHaveCount(0);
+	await picker.getByRole('button', { name: /^Ana/ }).click();
+	await expect(dialog.getByText('Ana', { exact: true })).toBeVisible();
+	await dialog.getByRole('button', { name: 'Guardar' }).click();
+	await expect(page.getByText('Relación guardada')).toBeVisible();
+	expect(people.find((p) => p.id === 'person-luis')!.branchFromPersonId).toBe('person-ana');
+
+	// Saved: the dialog opens with her.
+	await page.getByRole('button', { name: 'Relación' }).click();
+	await expect(dialog.getByText('Ana', { exact: true })).toBeVisible();
+	await dialog.getByRole('button', { name: 'Cancelar' }).click();
+
+	// Ana can't be born from Luis in turn.
+	await page.goto('/people/person-ana');
+	await page.getByRole('button', { name: 'Relación' }).click();
+	const hers = page.getByRole('dialog', { name: 'Relación con Ana' });
+	await hers.getByRole('button', { name: 'Elegir persona…' }).click();
+	await picker.getByRole('button', { name: /^Luis/ }).click();
+	await hers.getByRole('button', { name: 'Guardar' }).click();
+	await expect(
+		page.getByText('No se puede: esa persona ya nace de la estela de esta.')
+	).toBeVisible();
+	expect(people.find((p) => p.id === 'person-ana')!.branchFromPersonId).toBeNull();
+});
+
 test('merges a person with another from their page and lands on the kept one', async ({ page }) => {
 	await fakeApi(page, { signedIn: true });
 	await page.goto('/people/person-x1');

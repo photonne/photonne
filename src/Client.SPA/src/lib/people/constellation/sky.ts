@@ -6,6 +6,8 @@ export interface SkyPerson {
 	name: string;
 	relationshipCategory?: string | null;
 	relationshipLabel?: string | null;
+	/** Whose trail this person is born from (the niece, from the sister). */
+	branchFromPersonId?: string | null;
 	firstCapturedAt: string;
 	lastCapturedAt: string;
 	assetCount: number;
@@ -35,6 +37,11 @@ export interface Star {
 	years: readonly { year: number; assetCount: number }[];
 	/** Most photos in one year. */
 	peak: number;
+	/**
+	 * Whose trail it is born from: another star, or the main line ('you': a
+	 * child with no one chosen). Null when it appears on its own.
+	 */
+	origin: Star | 'you' | null;
 }
 
 export interface Sky {
@@ -55,6 +62,8 @@ export const FIXED_AFTER = 2;
 const DRIFT = 0.3;
 /** Space between two relationship bands, in lanes. */
 const BAND_GAP = 0.4;
+/** Years a star takes to leave the trail it is born from for its own lane. */
+export const BRANCH_YEARS = 2.5;
 /** A lane is free for someone else this long after its star stopped, in years. */
 const LANE_REST = 1.5;
 
@@ -101,9 +110,33 @@ export function buildSky(people: readonly SkyPerson[], today: Date): Sky {
 			lane: 0,
 			assetCount: person.assetCount,
 			years: person.years,
-			peak: Math.max(1, ...person.years.map((y) => y.assetCount))
+			peak: Math.max(1, ...person.years.map((y) => y.assetCount)),
+			origin: null
 		};
 	});
+
+	// Branches: only from a star that is in the sky and still moving when this
+	// one appears. A loop (the server refuses them) leaves its stars on their own.
+	const byId = new Map(stars.map((star) => [star.id, star]));
+	for (const [index, person] of people.entries()) {
+		const star = stars[index];
+		const parent = person.branchFromPersonId ? byId.get(person.branchFromPersonId) : undefined;
+		if (parent && parent !== star && parent.start <= star.start && star.start <= parent.until) {
+			star.origin = parent;
+		} else if (!person.branchFromPersonId && star.category === 'children') {
+			star.origin = 'you';
+		}
+	}
+	for (const star of stars) {
+		const seen = new Set<Star>([star]);
+		for (let up = star.origin; up && up !== 'you'; up = up.origin) {
+			if (seen.has(up)) {
+				star.origin = null;
+				break;
+			}
+			seen.add(up);
+		}
+	}
 
 	// Each band takes the same distance on both sides of the main line, so a
 	// colleague is never nearer than family. Within a band, whoever has more
@@ -122,7 +155,13 @@ export function buildSky(people: readonly SkyPerson[], today: Date): Sky {
 			);
 		if (members.length === 0) continue;
 		const lanes: Record<-1 | 1, Star[][]> = { [-1]: [], [1]: [] };
-		for (const star of members) {
+		while (members.length > 0) {
+			// Whoever it is born from goes first, so it can settle on their side.
+			const next = members.findIndex(
+				(star) => !(star.origin && star.origin !== 'you' && members.includes(star.origin))
+			);
+			const star = members.splice(Math.max(next, 0), 1)[0];
+			const near = star.origin && star.origin !== 'you' ? Math.sign(star.origin.lane) : 0;
 			const slot = ([-1, 1] as const)
 				.map((side) => {
 					const free = lanes[side].findIndex((lane) =>
@@ -133,7 +172,13 @@ export function buildSky(people: readonly SkyPerson[], today: Date): Sky {
 					);
 					return { side, index: free === -1 ? lanes[side].length : free };
 				})
-				.sort((a, b) => a.index - b.index || weight[a.side] - weight[b.side] || a.side - b.side)[0];
+				.sort(
+					(a, b) =>
+						Number(b.side === near) - Number(a.side === near) ||
+						a.index - b.index ||
+						weight[a.side] - weight[b.side] ||
+						a.side - b.side
+				)[0];
 			(lanes[slot.side][slot.index] ??= []).push(star);
 			weight[slot.side]++;
 			star.lane = slot.side * (offset + slot.index + 1);
@@ -163,10 +208,18 @@ export function closeness(star: Star, t: number): number {
 	return (at(year) * (1 - mix) + at(year + 1) * mix) / star.peak;
 }
 
-/** Where the star is at `t`: its lane, further out the fewer photos it has then. */
+/**
+ * Where the star is at `t`: its lane, further out the fewer photos it has
+ * then. One born from another trail leaves it little by little.
+ */
 export function laneAt(star: Star, t: number): number {
 	const time = Math.max(star.start, Math.min(t, star.until));
-	return star.lane + Math.sign(star.lane) * DRIFT * (1 - closeness(star, time));
+	const own = star.lane + Math.sign(star.lane) * DRIFT * (1 - closeness(star, time));
+	if (!star.origin) return own;
+	const left = Math.min(1, (time - star.start) / BRANCH_YEARS);
+	const ease = left * left * (3 - 2 * left);
+	const from = star.origin === 'you' ? 0 : laneAt(star.origin, time);
+	return from + (own - from) * ease;
 }
 
 /** 1 while there are recent photos; down to 0.35 as a year without any goes by. */

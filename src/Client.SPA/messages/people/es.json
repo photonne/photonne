@@ -419,5 +419,15 @@
 	],
 	"people_constellation_empty": "Aún no hay estrellas",
 	"people_constellation_empty_hint": "Pon nombre a las personas de tus fotos y aparecerán aquí.",
-	"people_constellation_error": "No se ha podido cargar la constelación"
+	"people_constellation_error": "No se ha podido cargar la constelación",
+	"people_branch_label": "Nace de la estela de",
+	"people_branch_none": "Nadie: nace por su cuenta",
+	"people_branch_none_children": "Nadie: nace de tu línea",
+	"people_branch_choose": "Elegir persona…",
+	"people_branch_change": "Cambiar",
+	"people_branch_remove": "Quitar",
+	"people_branch_hint": "En la constelación, su estela saldrá de la de esa persona: la sobrina, de la hermana.",
+	"people_branch_cycle": "No se puede: esa persona ya nace de la estela de esta.",
+	"people_constellation_born_from": "Nace de {name}",
+	"people_constellation_born_from_you": "Nace de tu línea"
 }

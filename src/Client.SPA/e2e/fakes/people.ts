@@ -28,6 +28,7 @@ interface Person {
 	isHidden: boolean;
 	relationshipCategory: string | null;
 	relationshipLabel: string | null;
+	branchFromPersonId: string | null;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -92,6 +93,7 @@ function initial(): PeopleState {
 			isHidden: entry.hidden ?? false,
 			relationshipCategory: entry.relationship?.[0] ?? null,
 			relationshipLabel: entry.relationship?.[1] ?? null,
+			branchFromPersonId: null,
 			createdAt: '2026-01-01T00:00:00Z',
 			updatedAt: '2026-01-01T00:00:00Z'
 		});
@@ -389,6 +391,7 @@ const handle: FakeHandler = async ({ method, path, request, authorized, json, ro
 					coverFaceId: p.coverFaceId,
 					relationshipCategory: p.relationshipCategory,
 					relationshipLabel: p.relationshipLabel,
+					branchFromPersonId: p.branchFromPersonId,
 					firstCapturedAt: `${from}-03-10T12:00:00`,
 					lastCapturedAt: `${to}-06-20T12:00:00`,
 					assetCount: years.reduce((sum, y) => sum + y.assetCount, 0),
@@ -413,6 +416,18 @@ const handle: FakeHandler = async ({ method, path, request, authorized, json, ro
 		const body = request.postDataJSON() as { category: string | null; label?: string | null };
 		person.relationshipCategory = body.category;
 		person.relationshipLabel = body.category ? body.label?.trim() || null : null;
+		return ok();
+	}
+	if (method === 'PUT' && parts[2] === 'branch') {
+		const from = (request.postDataJSON() as { personId: string | null }).personId;
+		// The one refusal the page words on its own: the other is born from this one.
+		if (from && find(from)?.branchFromPersonId === person.id) {
+			return json(400, {
+				error: 'That person already branches from this one',
+				code: 'branch_cycle'
+			}).then(() => true);
+		}
+		person.branchFromPersonId = from;
 		return ok();
 	}
 	if (method === 'POST' && parts[2] === 'hide') {

@@ -159,6 +159,79 @@ describe('a star over time', () => {
 	});
 });
 
+describe('branches', () => {
+	const family = (nieceFrom: string | null = 'sister') =>
+		buildSky(
+			[
+				person('mother', { 1990: 9, 2026: 9 }, 'family'),
+				person('sister', { 1992: 8, 2026: 8 }, 'family'),
+				{
+					...person('niece', { 2018: 5, 2019: 5, 2020: 5, 2021: 5, 2026: 5 }, 'family'),
+					branchFromPersonId: nieceFrom
+				},
+				person('friend', { 2000: 30, 2026: 30 }, 'family')
+			],
+			today
+		);
+
+	it('a star is born on the trail it branches from and eases into its own lane', () => {
+		const sky = family();
+		const niece = star(sky, 'niece');
+		const sister = star(sky, 'sister');
+		expect(niece.origin).toBe(sister);
+		expect(laneAt(niece, niece.start)).toBeCloseTo(laneAt(sister, niece.start));
+		const whole = Math.abs(laneAt(sister, niece.start) - niece.lane);
+		const halfway = Math.abs(laneAt(niece, niece.start + 1.25) - niece.lane);
+		expect(halfway).toBeGreaterThan(0.1);
+		expect(halfway).toBeLessThan(whole);
+		expect(Math.abs(laneAt(niece, niece.start + 3) - niece.lane)).toBeLessThan(0.31);
+	});
+
+	it('settles on the side of the star it is born from', () => {
+		const sky = family();
+		expect(Math.sign(star(sky, 'niece').lane)).toBe(Math.sign(star(sky, 'sister').lane));
+		// Even when the one it is born from has fewer photos and would go later.
+		const reversed = buildSky(
+			[
+				{ ...person('child', { 2018: 90, 2026: 90 }, 'family'), branchFromPersonId: 'parent' },
+				person('other', { 2000: 50, 2026: 50 }, 'family'),
+				person('parent', { 1990: 2, 2026: 2 }, 'family')
+			],
+			today
+		);
+		expect(Math.sign(star(reversed, 'child').lane)).toBe(Math.sign(star(reversed, 'parent').lane));
+	});
+
+	it('a child with no one chosen is born from the main line', () => {
+		const sky = buildSky([person('daughter', { 2020: 9, 2026: 9 }, 'children')], today);
+		const daughter = star(sky, 'daughter');
+		expect(daughter.origin).toBe('you');
+		expect(laneAt(daughter, daughter.start)).toBe(0);
+		expect(Math.abs(laneAt(daughter, 2026))).toBeGreaterThan(0.9);
+	});
+
+	it('ignores a branch from someone missing, already fixed or in a loop', () => {
+		expect(star(family('nobody'), 'niece').origin).toBeNull();
+		const stopped = buildSky(
+			[
+				person('grandfather', { 1990: 5, 1997: 5 }, 'family'),
+				{ ...person('niece', { 2018: 5, 2026: 5 }, 'family'), branchFromPersonId: 'grandfather' }
+			],
+			today
+		);
+		expect(star(stopped, 'niece').origin).toBeNull();
+		const loop = buildSky(
+			[
+				{ ...person('a', { 2000: 5, 2026: 5 }), branchFromPersonId: 'b' },
+				{ ...person('b', { 2000: 5, 2026: 5 }), branchFromPersonId: 'a' }
+			],
+			today
+		);
+		expect(star(loop, 'a').origin).toBeNull();
+		expect(Number.isFinite(laneAt(star(loop, 'b'), 2010))).toBe(true);
+	});
+});
+
 describe('yearStep', () => {
 	it('spaces the year lines so their labels fit', () => {
 		expect(yearStep(60)).toBe(1);
