@@ -13,6 +13,7 @@ Sistema de gestión de fotos y videos auto-hospedado. Indexa, organiza y visuali
 - **Favoritos** — Marca assets como favoritos para acceso rápido
 - **Etiquetas** — Tags automáticos por ML y tags manuales de usuario
 - **Memorias** — Revive fotos y vídeos de este mismo día en años anteriores
+- **Constelación** — Las personas de tus fotos como estrellas a lo largo del tiempo, por relación (familia, pareja, amistades…): cada una nace con su primera foto y se queda fija donde está la última
 - **Vídeos resumen** — Monta bajo demanda un vídeo de 1 a 10 minutos con lo mejor de un año o de un álbum (con fotos, si quieres; solo horizontales, solo verticales —en formato vertical— o todo) y lo guarda en tu biblioteca, en la carpeta Recuerdos
 
 **Gestión de archivos**

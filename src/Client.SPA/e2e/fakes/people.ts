@@ -4,6 +4,7 @@ import type {
 	MemoryResponse,
 	PeoplePageResponse,
 	PendingCountResponse,
+	PeopleConstellationResponse,
 	PersonDto,
 	PersonFacesPageResponse,
 	PersonSuggestionsPageResponse
@@ -60,6 +61,15 @@ const seed: {
 	{ id: 'person-x2', name: null, faces: 3, suggestions: 0 },
 	{ id: 'person-jose', name: 'José', faces: 2, suggestions: 0 }
 ];
+
+// The constellation: first year, last year and photos a year of each person.
+// José stopped appearing long ago; the others reach the present.
+const lives: Record<string, [from: number, to: number, perYear: number]> = {
+	'person-ana': [2012, 2026, 6],
+	'person-luis': [2015, 2026, 3],
+	'person-marta': [2018, 2026, 2],
+	'person-jose': [2009, 2016, 2]
+};
 
 function initial(): PeopleState {
 	const people: Person[] = [];
@@ -362,6 +372,30 @@ const handle: FakeHandler = async ({ method, path, request, authorized, json, ro
 					: [];
 			});
 		return done(page(faces, url));
+	}
+
+	if (method === 'GET' && path === '/api/people/constellation') {
+		const people = s.people
+			.filter((p) => p.name !== null && !p.isHidden && lives[p.id])
+			.map((p) => {
+				const [from, to, perYear] = lives[p.id];
+				const years = Array.from({ length: to - from + 1 }, (_, i) => ({
+					year: from + i,
+					assetCount: perYear + (i % 3)
+				}));
+				return {
+					id: p.id,
+					name: p.name!,
+					coverFaceId: p.coverFaceId,
+					relationshipCategory: p.relationshipCategory,
+					relationshipLabel: p.relationshipLabel,
+					firstCapturedAt: `${from}-03-10T12:00:00`,
+					lastCapturedAt: `${to}-06-20T12:00:00`,
+					assetCount: years.reduce((sum, y) => sum + y.assetCount, 0),
+					years
+				};
+			});
+		return done({ people } satisfies PeopleConstellationResponse);
 	}
 
 	const person = find(parts[1]);
