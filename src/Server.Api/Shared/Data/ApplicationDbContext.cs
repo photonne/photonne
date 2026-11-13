@@ -695,6 +695,11 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(e => e.CoverFaceId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            entity.HasOne(e => e.BranchFrom)
+                .WithMany()
+                .HasForeignKey(e => e.BranchFromPersonId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             entity.HasIndex(e => e.OwnerId);
             entity.HasIndex(e => new { e.OwnerId, e.IsHidden });
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone").HasConversion(UtcConverter);

@@ -3102,6 +3102,57 @@
         ]
       }
     },
+    "/api/people/{id}/branch": {
+      "put": {
+        "tags": [
+          "People"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPersonBranchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/people/{id}/relationship": {
       "put": {
         "tags": [
@@ -13243,7 +13294,8 @@
           "firstCapturedAt",
           "lastCapturedAt",
           "assetCount",
-          "years"
+          "years",
+          "branchFromPersonId"
         ],
         "type": "object",
         "properties": {
@@ -13290,6 +13342,13 @@
             "items": {
               "$ref": "#/components/schemas/ConstellationYearDto"
             }
+          },
+          "branchFromPersonId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -15836,7 +15895,8 @@
           "updatedAt",
           "pendingSuggestionsCount",
           "relationshipCategory",
-          "relationshipLabel"
+          "relationshipLabel",
+          "branchFromPersonId"
         ],
         "type": "object",
         "properties": {
@@ -15887,6 +15947,13 @@
               "null",
               "string"
             ]
+          },
+          "branchFromPersonId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -17225,6 +17292,21 @@
           },
           "canManagePermissions": {
             "type": "boolean"
+          }
+        }
+      },
+      "SetPersonBranchRequest": {
+        "required": [
+          "personId"
+        ],
+        "type": "object",
+        "properties": {
+          "personId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },

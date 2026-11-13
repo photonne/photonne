@@ -20,13 +20,14 @@ public sealed record ConstellationPersonDto(
     DateTime FirstCapturedAt,
     DateTime LastCapturedAt,
     int AssetCount,
-    List<ConstellationYearDto> Years);
+    List<ConstellationYearDto> Years,
+    Guid? BranchFromPersonId = null);
 
 public sealed record PeopleConstellationResponse(List<ConstellationPersonDto> People);
 
 /// <summary>
 /// Datos de la constelación: por cada persona con nombre y visible, su relación
-/// con el usuario, la primera y la última foto en la que sale y cuántas fotos
+/// con el usuario, de quién nace su estela, la primera y la última foto en la que sale y cuántas fotos
 /// tiene cada año. Con eso el cliente dibuja una estela por persona y sabe
 /// dónde se detiene.
 /// </summary>
@@ -48,7 +49,7 @@ public class PeopleConstellationEndpoint : IEndpoint
 
         var people = await db.People.AsNoTracking()
             .Where(p => p.OwnerId == userId && !p.IsHidden && p.Name != null)
-            .Select(p => new { p.Id, Name = p.Name!, p.CoverFaceId, p.RelationshipCategory, p.RelationshipLabel })
+            .Select(p => new { p.Id, Name = p.Name!, p.CoverFaceId, p.RelationshipCategory, p.RelationshipLabel, p.BranchFromPersonId })
             .ToListAsync(ct);
 
         // Una foto con dos caras de la misma persona cuenta una vez: primero
@@ -92,7 +93,8 @@ public class PeopleConstellationEndpoint : IEndpoint
                     years.Min(b => b.First),
                     years.Max(b => b.Last),
                     years.Sum(b => b.Count),
-                    years.Select(b => new ConstellationYearDto(b.Year, b.Count)).ToList());
+                    years.Select(b => new ConstellationYearDto(b.Year, b.Count)).ToList(),
+                    p.BranchFromPersonId);
             })
             .OrderBy(p => p.FirstCapturedAt)
             .ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)

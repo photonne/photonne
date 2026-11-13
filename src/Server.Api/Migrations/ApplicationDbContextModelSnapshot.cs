@@ -1175,6 +1175,9 @@ namespace Photonne.Server.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BranchFromPersonId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("CoverFaceId")
                         .HasColumnType("uuid");
 
@@ -1206,6 +1209,8 @@ namespace Photonne.Server.Api.Migrations
                         .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BranchFromPersonId");
 
                     b.HasIndex("CoverFaceId");
 
@@ -2208,6 +2213,11 @@ namespace Photonne.Server.Api.Migrations
 
             modelBuilder.Entity("Photonne.Server.Api.Shared.Models.Person", b =>
                 {
+                    b.HasOne("Photonne.Server.Api.Shared.Models.Person", "BranchFrom")
+                        .WithMany()
+                        .HasForeignKey("BranchFromPersonId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Photonne.Server.Api.Shared.Models.Face", "CoverFace")
                         .WithMany()
                         .HasForeignKey("CoverFaceId")
@@ -2218,6 +2228,8 @@ namespace Photonne.Server.Api.Migrations
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("BranchFrom");
 
                     b.Navigation("CoverFace");
 

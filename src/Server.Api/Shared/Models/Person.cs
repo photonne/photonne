@@ -29,6 +29,11 @@ public class Person
     [MaxLength(PersonRelationship.MaxLabelLength)]
     public string? RelationshipLabel { get; set; }
 
+    // De la estela de quién nace esta persona en la constelación (la sobrina,
+    // de la hermana). Null: nace por su cuenta.
+    public Guid? BranchFromPersonId { get; set; }
+    public Person? BranchFrom { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

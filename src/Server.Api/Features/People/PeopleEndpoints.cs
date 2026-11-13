@@ -21,7 +21,8 @@ public record PersonDto(
     DateTime UpdatedAt,
     int PendingSuggestionsCount,
     string? RelationshipCategory = null,
-    string? RelationshipLabel = null);
+    string? RelationshipLabel = null,
+    Guid? BranchFromPersonId = null);
 
 public record RenamePersonRequest(string? Name);
 
@@ -115,7 +116,7 @@ public class ListPeopleEndpoint : IEndpoint
                                     && !uf.IsRejected
                                     && uf.Face.Asset.DeletedAt == null
                                     && !uf.Face.Asset.IsFileMissing),
-                p.RelationshipCategory, p.RelationshipLabel))
+                p.RelationshipCategory, p.RelationshipLabel, p.BranchFromPersonId))
             .ToListAsync(ct);
 
         return TypedResults.Ok(new PeoplePageResponse(total, page));
@@ -156,7 +157,7 @@ public class GetPersonEndpoint : IEndpoint
                                     && !uf.IsRejected
                                     && uf.Face.Asset.DeletedAt == null
                                     && !uf.Face.Asset.IsFileMissing),
-                x.RelationshipCategory, x.RelationshipLabel))
+                x.RelationshipCategory, x.RelationshipLabel, x.BranchFromPersonId))
             .FirstOrDefaultAsync(ct);
 
         if (p == null) return TypedResults.NotFound();
