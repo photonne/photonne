@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.201.3](https://github.com/photonne/photonne/compare/ml-v1.201.2...ml-v1.201.3) (2026-11-13)
+
+
+### Dependencias
+
+* **ml:** bump the pip-minor group across 1 directory with 2 updates ([a2280c1](https://github.com/photonne/photonne/commit/a2280c107050cd823b0243e2be83ec74105aaad4))
+
 ## [1.201.2](https://github.com/photonne/photonne/compare/ml-v1.201.1...ml-v1.201.2) (2026-11-12)
 
 
