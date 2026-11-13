@@ -3204,6 +3204,47 @@
         ]
       }
     },
+    "/api/people/{id}/self": {
+      "put": {
+        "tags": [
+          "People"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPersonSelfRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
     "/api/people/{id}/suggestions": {
       "get": {
         "tags": [
@@ -13352,6 +13393,33 @@
           }
         }
       },
+      "ConstellationSelfDto": {
+        "required": [
+          "id",
+          "name",
+          "coverFaceId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "coverFaceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
       "ConstellationYearDto": {
         "required": [
           "year",
@@ -15798,7 +15866,8 @@
       },
       "PeopleConstellationResponse": {
         "required": [
-          "people"
+          "people",
+          "self"
         ],
         "type": "object",
         "properties": {
@@ -15807,6 +15876,16 @@
             "items": {
               "$ref": "#/components/schemas/ConstellationPersonDto"
             }
+          },
+          "self": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ConstellationSelfDto"
+              }
+            ]
           }
         }
       },
@@ -15896,7 +15975,8 @@
           "pendingSuggestionsCount",
           "relationshipCategory",
           "relationshipLabel",
-          "branchFromPersonId"
+          "branchFromPersonId",
+          "isSelf"
         ],
         "type": "object",
         "properties": {
@@ -15954,6 +16034,10 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "isSelf": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -17327,6 +17411,17 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "SetPersonSelfRequest": {
+        "required": [
+          "isSelf"
+        ],
+        "type": "object",
+        "properties": {
+          "isSelf": {
+            "type": "boolean"
           }
         }
       },
