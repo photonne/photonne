@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.12.2](https://github.com/photonne/photonne/compare/server-v2.12.1...server-v2.12.2) (2026-11-13)
+
+
+### Correcciones
+
+* **ci:** ignorar en dependabot las mayores de .NET para subirlas a mano ([1aebc52](https://github.com/photonne/photonne/commit/1aebc526574c8a986753cb062a28862eb77bcc1e))
+
+
+### Dependencias
+
+* **server:** Bump Magick.NET-Q8-AnyCPU and 9 others ([d4b3f69](https://github.com/photonne/photonne/commit/d4b3f69f391372c5343673f765c99727ab0514e0))
+* **spa:** bump @inlang/paraglide-js in /src/Client.SPA ([ac77f0d](https://github.com/photonne/photonne/commit/ac77f0d719dae5604ea0dc76bc354c5b46d12476))
+* **spa:** bump the npm-minor group across 1 directory with 15 updates ([a4d0a4b](https://github.com/photonne/photonne/commit/a4d0a4bd77410da7e6fb8b2b8433e8552fdf9224))
+
 ## [2.12.1](https://github.com/photonne/photonne/compare/server-v2.12.0...server-v2.12.1) (2026-11-12)
 
 
