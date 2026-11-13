@@ -682,6 +682,8 @@ public class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).HasMaxLength(200);
+            entity.Property(e => e.RelationshipCategory).HasMaxLength(PersonRelationship.MaxCategoryLength);
+            entity.Property(e => e.RelationshipLabel).HasMaxLength(PersonRelationship.MaxLabelLength);
 
             entity.HasOne(e => e.Owner)
                 .WithMany()

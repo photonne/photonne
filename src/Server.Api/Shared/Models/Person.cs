@@ -19,6 +19,16 @@ public class Person
 
     public bool IsHidden { get; set; }
 
+    // Qué es esta persona para el dueño. La categoría es un código de
+    // PersonRelationship.Categories (se guarda como texto para poder añadir
+    // categorías sin romper a las apps antiguas); la etiqueta es el parentesco
+    // concreto en texto libre ("Madre", "Amigo del instituto").
+    [MaxLength(PersonRelationship.MaxCategoryLength)]
+    public string? RelationshipCategory { get; set; }
+
+    [MaxLength(PersonRelationship.MaxLabelLength)]
+    public string? RelationshipLabel { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

@@ -794,6 +794,14 @@ public class FaceClusteringService
             .Where(uf => uf.UserId == userId && uf.SuggestedPersonId == sourcePersonId)
             .ExecuteUpdateAsync(s => s.SetProperty(uf => uf.SuggestedPersonId, (Guid?)target.Id), cancellationToken);
 
+        // La relación sobrevive a la fusión: si la persona que queda no tenía,
+        // hereda la de la que desaparece.
+        if (target.RelationshipCategory == null && source.RelationshipCategory != null)
+        {
+            target.RelationshipCategory = source.RelationshipCategory;
+            target.RelationshipLabel = source.RelationshipLabel;
+        }
+
         // Clear source's CoverFace FK to avoid blocking the delete via SetNull cascade.
         source.CoverFaceId = null;
         await _dbContext.SaveChangesAsync(cancellationToken);
