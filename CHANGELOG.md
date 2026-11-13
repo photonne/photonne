@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.14.0](https://github.com/photonne/photonne/compare/server-v2.13.0...server-v2.14.0) (2026-11-13)
+
+
+### Novedades
+
+* **server:** ramas de la constelación, de quién nace cada persona ([e500450](https://github.com/photonne/photonne/commit/e500450c78554fe7d7af51db90e3e13393b1ca90))
+* **spa:** la constelación ocupa toda la ventana, con cápsulas flotantes ([bb40d31](https://github.com/photonne/photonne/commit/bb40d31b8a5533c9f3290a2b5f11dc813526de89))
+* **spa:** más parentescos sugeridos al elegir la relación ([2a60b2a](https://github.com/photonne/photonne/commit/2a60b2a75d2eb6b4e50ded4653887a2700ddf949))
+* **spa:** ramas en la constelación, una persona nace de la estela de otra ([81974a7](https://github.com/photonne/photonne/commit/81974a7780ff80cbcecf03cf767f3a9379a87b16))
+
 ## [2.13.0](https://github.com/photonne/photonne/compare/server-v2.12.2...server-v2.13.0) (2026-11-13)
 
 
