@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.15.0](https://github.com/photonne/photonne/compare/server-v2.14.0...server-v2.15.0) (2026-11-14)
+
+
+### Novedades
+
+* **server:** «soy yo», la persona que es el propio usuario ([24e249b](https://github.com/photonne/photonne/commit/24e249b2a5c487a193cf88663ccd3e63b6e8fd94))
+* **spa:** «soy yo» en la ficha de una persona ([074ab61](https://github.com/photonne/photonne/commit/074ab61c7e60f40dceb2b7a3e45d20dbe0f40703))
+
 ## [2.14.0](https://github.com/photonne/photonne/compare/server-v2.13.0...server-v2.14.0) (2026-11-13)
 
 
