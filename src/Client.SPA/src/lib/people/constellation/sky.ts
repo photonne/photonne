@@ -42,6 +42,22 @@ export interface Star {
 	 * child with no one chosen). Null when it appears on its own.
 	 */
 	origin: Star | 'you' | null;
+	/**
+	 * Who it hangs from, drawn or not: what keeps a family together. A star
+	 * and everyone hanging from it, however far down, are a pack.
+	 */
+	parent: Star | null;
+}
+
+/** A star and those who hang from it, on lanes of their own next to each other. */
+export interface Pack {
+	stars: Star[];
+	/** Innermost and outermost lane, both on the same side of the main line. */
+	inner: number;
+	outer: number;
+	/** From the first photo of any of them to where the last trail stops. */
+	from: number;
+	until: number;
 }
 
 export interface Sky {
@@ -52,6 +68,8 @@ export interface Sky {
 	/** Outermost lanes in use, above (negative) and below the main line. */
 	top: number;
 	bottom: number;
+	/** The packs of more than one star, to draw each as a group. */
+	packs: Pack[];
 }
 
 /** Years without photos before a star dims, and before it stays behind. */
@@ -60,6 +78,8 @@ export const FIXED_AFTER = 2;
 
 /** How far a star drifts from its lane in a year without photos, in lanes. */
 const DRIFT = 0.3;
+/** Space around a pack, in lanes: sets it apart from its neighbours. */
+const PACK_GAP = 0.35;
 /** Space between two relationship bands, in lanes. */
 const BAND_GAP = 0.4;
 /** Years a star takes to leave the trail it is born from for its own lane. */
@@ -119,17 +139,36 @@ export function buildSky(
 			assetCount: person.assetCount,
 			years: person.years,
 			peak: Math.max(1, ...person.years.map((y) => y.assetCount)),
-			origin: null
+			origin: null,
+			parent: null
 		};
 	});
 
-	// Branches: only from a star that is in the sky and still moving when this
-	// one appears. A loop (the server refuses them) leaves its stars on their own.
+	// Who hangs from whom. A loop (the server refuses them) leaves its stars
+	// on their own.
 	const byId = new Map(stars.map((star) => [star.id, star]));
 	for (const [index, person] of people.entries()) {
-		const star = stars[index];
 		const parent = person.branchFromPersonId ? byId.get(person.branchFromPersonId) : undefined;
-		if (parent && parent !== star && parent.start <= star.start && star.start <= parent.until) {
+		if (parent && parent !== stars[index]) stars[index].parent = parent;
+	}
+	for (const star of stars) {
+		const seen = new Set<Star>([star]);
+		for (let up = star.parent; up; up = up.parent) {
+			if (seen.has(up)) {
+				star.parent = null;
+				break;
+			}
+			seen.add(up);
+		}
+	}
+
+	// Branches are drawn only from a star that is still moving when this one
+	// appears; from the main line, for whoever hangs from the user and for a
+	// child with no one chosen.
+	for (const [index, person] of people.entries()) {
+		const star = stars[index];
+		const parent = star.parent;
+		if (parent && parent.start <= star.start && star.start <= parent.until) {
 			star.origin = parent;
 		} else if (
 			person.branchFromPersonId
@@ -139,63 +178,90 @@ export function buildSky(
 			star.origin = 'you';
 		}
 	}
+
+	// Packs: each star with no one above it, followed by those who hang from
+	// it, each right before their own.
+	const children = new Map<Star, Star[]>();
 	for (const star of stars) {
-		const seen = new Set<Star>([star]);
-		for (let up = star.origin; up && up !== 'you'; up = up.origin) {
-			if (seen.has(up)) {
-				star.origin = null;
-				break;
-			}
-			seen.add(up);
-		}
+		if (star.parent) children.set(star.parent, [...(children.get(star.parent) ?? []), star]);
 	}
+	const family = (star: Star): Star[] => [
+		star,
+		...(children.get(star) ?? []).sort((a, b) => a.start - b.start).flatMap(family)
+	];
+	const units = stars.filter((star) => !star.parent).map(family);
+	const photos = (unit: Star[]) => unit.reduce((sum, star) => sum + star.assetCount, 0);
+	const apart = (a: Star, b: Star) =>
+		a.start > b.until + LANE_REST || b.start > a.until + LANE_REST;
 
 	// Each band takes the same distance on both sides of the main line, so a
-	// colleague is never nearer than family. Within a band, whoever has more
-	// photos goes first and gets the innermost lane; a lane whose star stopped
-	// is reused by someone who appears later.
+	// colleague is never nearer than family. A pack goes whole in the band of
+	// the star it starts from. Within a band, whoever has more photos goes
+	// first and gets the innermost lanes; a lane whose star stopped is reused
+	// by someone who appears later, but never one inside somebody else's pack.
+	const packs: Pack[] = [];
 	let offset = 0;
 	const weight = { [-1]: 0, [1]: 0 };
 	for (const band of BANDS) {
-		const members = stars
-			.filter((star) => band.includes(star.category))
+		const members = units
+			.filter((unit) => band.includes(unit[0].category))
 			.sort(
 				(a, b) =>
-					band.indexOf(a.category) - band.indexOf(b.category) ||
-					b.assetCount - a.assetCount ||
-					a.start - b.start
+					band.indexOf(a[0].category) - band.indexOf(b[0].category) ||
+					photos(b) - photos(a) ||
+					a[0].start - b[0].start
 			);
 		if (members.length === 0) continue;
-		const lanes: Record<-1 | 1, Star[][]> = { [-1]: [], [1]: [] };
-		while (members.length > 0) {
-			// Whoever it is born from goes first, so it can settle on their side.
-			const next = members.findIndex(
-				(star) => !(star.origin && star.origin !== 'you' && members.includes(star.origin))
-			);
-			const star = members.splice(Math.max(next, 0), 1)[0];
-			const near = star.origin && star.origin !== 'you' ? Math.sign(star.origin.lane) : 0;
-			const slot = ([-1, 1] as const)
-				.map((side) => {
-					const free = lanes[side].findIndex((lane) =>
-						lane.every(
-							(other) =>
-								star.start > other.until + LANE_REST || other.start > star.until + LANE_REST
-						)
-					);
-					return { side, index: free === -1 ? lanes[side].length : free };
-				})
-				.sort(
-					(a, b) =>
-						Number(b.side === near) - Number(a.side === near) ||
-						a.index - b.index ||
-						weight[a.side] - weight[b.side] ||
-						a.side - b.side
-				)[0];
-			(lanes[slot.side][slot.index] ??= []).push(star);
-			weight[slot.side]++;
-			star.lane = slot.side * (offset + slot.index + 1);
+		// Lanes that can be shared, and how far each side has got, in lanes.
+		const shared: Record<-1 | 1, { at: number; stars: Star[] }[]> = { [-1]: [], [1]: [] };
+		const reach = { [-1]: 0, [1]: 0 };
+		for (const unit of members) {
+			if (unit.length === 1) {
+				const star = unit[0];
+				const slot = ([-1, 1] as const)
+					.map((side) => {
+						const free = shared[side].find((lane) =>
+							lane.stars.every((other) => apart(star, other))
+						);
+						return { side, free, at: free?.at ?? reach[side] + 1 };
+					})
+					.sort((a, b) => a.at - b.at || weight[a.side] - weight[b.side] || a.side - b.side)[0];
+				if (slot.free) slot.free.stars.push(star);
+				else {
+					shared[slot.side].push({ at: slot.at, stars: [star] });
+					reach[slot.side] = slot.at;
+				}
+				weight[slot.side]++;
+				star.lane = slot.side * (offset + slot.at);
+				continue;
+			}
+
+			// A pack: its own lanes, one after another on the emptier side, with
+			// some air around. Inside, a lane is reused as anywhere else.
+			const side = ([-1, 1] as const)
+				.slice()
+				.sort((a, b) => reach[a] - reach[b] || weight[a] - weight[b] || a - b)[0];
+			const rows: Star[][] = [];
+			for (const star of unit) {
+				const row = rows.find((lane) => lane.every((other) => apart(star, other)));
+				if (row) row.push(star);
+				else rows.push([star]);
+			}
+			const first = reach[side] + PACK_GAP + 1;
+			rows.forEach((row, index) => {
+				for (const star of row) star.lane = side * (offset + first + index);
+			});
+			reach[side] = first + rows.length - 1 + PACK_GAP;
+			weight[side] += unit.length;
+			packs.push({
+				stars: unit,
+				inner: side * (offset + first),
+				outer: side * (offset + first + rows.length - 1),
+				from: Math.min(...unit.map((star) => star.start)),
+				until: Math.max(...unit.map((star) => star.until))
+			});
 		}
-		offset += Math.max(lanes[-1].length, lanes[1].length) + BAND_GAP;
+		offset += Math.max(reach[-1], reach[1]) + BAND_GAP;
 	}
 
 	return {
@@ -203,7 +269,8 @@ export function buildSky(
 		from: stars.length > 0 ? Math.min(...stars.map((star) => star.start)) : to - 1,
 		to,
 		top: Math.min(0, ...stars.map((star) => star.lane)),
-		bottom: Math.max(0, ...stars.map((star) => star.lane))
+		bottom: Math.max(0, ...stars.map((star) => star.lane)),
+		packs
 	};
 }
 
