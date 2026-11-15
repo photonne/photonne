@@ -50,7 +50,7 @@
 	const MUTED = '#8d96b8';
 	/** Seconds a whole life takes to play. */
 	const SPEEDS = { slow: 45, normal: 20, fast: 9 } as const;
-	const MIN_LANE = 18;
+	const MIN_LANE = 15;
 	// Room the floating capsules take over the sky: the title above; the
 	// legend and the controls below.
 	const TITLE_ROOM = 56;
@@ -190,6 +190,21 @@
 		ctx.moveTo(front, top);
 		ctx.lineTo(front, bottom);
 		ctx.stroke();
+
+		// Each pack as a group: a faint band behind its lanes, as far as the
+		// present has got.
+		const half = (y(1) - y(0)) / 2;
+		ctx.fillStyle = 'rgba(160,175,230,.055)';
+		for (const pack of sky.packs) {
+			if (now < pack.from) continue;
+			const left = x(pack.from) - 10;
+			const right = x(Math.min(now, pack.until)) + 10;
+			const above = Math.min(y(pack.inner), y(pack.outer)) - half;
+			const below = Math.max(y(pack.inner), y(pack.outer)) + half;
+			ctx.beginPath();
+			ctx.roundRect(left, above, right - left, below - above, 10);
+			ctx.fill();
+		}
 
 		const twinkle = reduceMotion ? 0 : ms / 1000;
 		ctx.lineJoin = 'round';

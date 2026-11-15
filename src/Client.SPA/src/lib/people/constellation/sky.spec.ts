@@ -119,7 +119,7 @@ describe('buildSky', () => {
 
 	it('is an empty sky around today without people', () => {
 		const sky = buildSky([], today);
-		expect(sky).toMatchObject({ stars: [], top: 0, bottom: 0 });
+		expect(sky).toMatchObject({ stars: [], top: 0, bottom: 0, packs: [] });
 		expect(sky.to - sky.from).toBe(1);
 	});
 });
@@ -239,6 +239,110 @@ describe('branches', () => {
 		);
 		expect(star(loop, 'a').origin).toBeNull();
 		expect(Number.isFinite(laneAt(star(loop, 'b'), 2010))).toBe(true);
+	});
+});
+
+describe('packs', () => {
+	const from = (who: SkyPerson, branchFromPersonId: string): SkyPerson => ({
+		...who,
+		branchFromPersonId
+	});
+	// A cousin, her husband and their children, among relatives with more and
+	// fewer photos than any of them.
+	const people = [
+		person('mother', { 1990: 60, 2026: 60 }, 'family'),
+		person('cousin', { 1995: 10, 2026: 10 }, 'family'),
+		from(person('husband', { 2012: 4, 2026: 4 }, 'other'), 'cousin'),
+		from(person('son', { 2016: 30, 2026: 30 }, 'family'), 'cousin'),
+		from(person('daughter', { 2019: 20, 2026: 20 }, 'family'), 'cousin'),
+		person('uncle', { 1990: 25, 2026: 25 }, 'family'),
+		person('aunt', { 1990: 15, 2026: 15 }, 'family'),
+		person('grandmother', { 1990: 5, 2026: 5 }, 'family')
+	];
+	const sky = buildSky(people, today);
+	const pack = ['cousin', 'husband', 'son', 'daughter'];
+
+	it('keeps a star and those who hang from it on lanes next to each other', () => {
+		const lanes = pack.map((id) => star(sky, id).lane);
+		expect(new Set(lanes.map(Math.sign)).size).toBe(1);
+		const inner = Math.min(...lanes.map(Math.abs));
+		const outer = Math.max(...lanes.map(Math.abs));
+		expect(outer - inner).toBeCloseTo(3);
+		// Nobody else between them, on that side.
+		const side = Math.sign(lanes[0]);
+		const inside = sky.stars.filter(
+			(other) =>
+				!pack.includes(other.id) &&
+				Math.sign(other.lane) === side &&
+				Math.abs(other.lane) > inner - 0.3 &&
+				Math.abs(other.lane) < outer + 0.3
+		);
+		expect(inside).toEqual([]);
+	});
+
+	it('puts who it starts from first, then the others as they appear', () => {
+		const order = [...pack].sort(
+			(a, b) => Math.abs(star(sky, a).lane) - Math.abs(star(sky, b).lane)
+		);
+		expect(order).toEqual(['cousin', 'husband', 'son', 'daughter']);
+	});
+
+	it('goes whole in the band of the star it starts from, whatever the others are', () => {
+		const friend = buildSky(
+			[...people, person('friend', { 2000: 99, 2026: 99 }, 'friends')],
+			today
+		);
+		// The husband is "other", the last band: he stays with the family.
+		expect(Math.abs(star(friend, 'husband').lane)).toBeLessThan(
+			Math.abs(star(friend, 'friend').lane)
+		);
+	});
+
+	it('says which lanes and years each pack takes, to draw it as a group', () => {
+		expect(sky.packs).toHaveLength(1);
+		const [group] = sky.packs;
+		expect(group.stars.map((entry) => entry.id)).toEqual(pack);
+		expect(group.inner).toBe(star(sky, 'cousin').lane);
+		expect(group.outer).toBe(star(sky, 'daughter').lane);
+		expect(group.from).toBe(star(sky, 'cousin').start);
+		expect(group.until).toBe(sky.to);
+	});
+
+	it('holds together even when the branch can not be drawn', () => {
+		// The aunt shows up in photos after her daughter: no branch, same pack.
+		const late = buildSky(
+			[
+				person('aunt', { 2010: 5, 2026: 5 }, 'family'),
+				from(person('cousin', { 2000: 9, 2026: 9 }, 'family'), 'aunt'),
+				person('uncle', { 1990: 7, 2026: 7 }, 'family'),
+				person('mother', { 1990: 8, 2026: 8 }, 'family')
+			],
+			today
+		);
+		expect(star(late, 'cousin').origin).toBeNull();
+		expect(star(late, 'cousin').parent).toBe(star(late, 'aunt'));
+		expect(Math.abs(star(late, 'cousin').lane - star(late, 'aunt').lane)).toBe(1);
+	});
+
+	it('chains generations into one pack', () => {
+		const chain = buildSky(
+			[
+				person('grandmother', { 1990: 5, 2026: 5 }, 'family'),
+				from(person('aunt', { 1991: 5, 2026: 5 }, 'family'), 'grandmother'),
+				from(person('cousin', { 1995: 5, 2026: 5 }, 'family'), 'aunt'),
+				from(person('uncle', { 1992: 5, 2026: 5 }, 'family'), 'grandmother'),
+				person('mother', { 1990: 9, 2026: 9 }, 'family')
+			],
+			today
+		);
+		expect(chain.packs).toHaveLength(1);
+		// Each one right before their own: the cousin next to the aunt, not after the uncle.
+		expect(chain.packs[0].stars.map((entry) => entry.id)).toEqual([
+			'grandmother',
+			'aunt',
+			'cousin',
+			'uncle'
+		]);
 	});
 });
 
