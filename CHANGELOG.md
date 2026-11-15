@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.16.0](https://github.com/photonne/photonne/compare/server-v2.15.0...server-v2.16.0) (2026-11-15)
+
+
+### Novedades
+
+* **spa:** las ramas de la constelación van en pack ([ca17ddb](https://github.com/photonne/photonne/commit/ca17ddb10c829f926048cb8a6a35c7554ca55677))
+
 ## [2.15.0](https://github.com/photonne/photonne/compare/server-v2.14.0...server-v2.15.0) (2026-11-14)
 
 
